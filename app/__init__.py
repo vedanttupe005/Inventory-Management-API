@@ -1,6 +1,7 @@
 from flask import Flask
 from .extensions import db, migrate,jwt
 from .config import Config
+from app.model.user import User
 
 
 def create_app():

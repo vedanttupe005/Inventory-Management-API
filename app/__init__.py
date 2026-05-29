@@ -12,12 +12,11 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
 
+    from app.auth import auth_bp
+    app.register_blueprint(auth_bp)
+
     @app.route('/')
     def index():
         return {"message": "Welcome to the Flask API!"}
-
-
-
-
 
     return app

@@ -8,3 +8,4 @@ class OrderItems(db.Model):
     price = db.Column(db.Float, nullable=False)
 
     order = db.relationship('Order', backref=db.backref('items', lazy=True))
+    product = db.relationship('Product', backref=db.backref('order_items', lazy=True))

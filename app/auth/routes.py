@@ -101,9 +101,13 @@ def login():
     }, 200
 
 
-@auth_bp.route('/logout', methods=['POST', 'GET'])
+@auth_bp.route("/logout", methods=["POST"])
+@jwt_required()
 def logout():
-    return {"message": "User logout endpoint"}
+
+    return {
+        "message": "Logged out successfully"
+    }, 200
 
 
 

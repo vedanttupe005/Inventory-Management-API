@@ -2,6 +2,7 @@ from flask import Flask
 from .extensions import db, migrate,jwt
 from .config import Config
 from app.model.user import User
+from flask_jwt_extended import jwt_required
 
 
 def create_app():
@@ -12,10 +13,14 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
 
+    from app import jwt_callback
+
     from app.auth import auth_bp
     app.register_blueprint(auth_bp)
 
+
     @app.route('/')
+    @jwt_required()
     def index():
         return {"message": "Welcome to the Flask API!"}
 

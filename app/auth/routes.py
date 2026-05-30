@@ -1,11 +1,12 @@
 from app.auth import auth_bp
 from marshmallow import ValidationError
-from flask import request, jsonify
+from flask import request
 
 from app.model.user import User
+from app.model.token_blocklist import TokenBlocklist
 from app.extensions import db
 from app.schema.user_schema import RegisterSchema, LoginSchema,UserResponseSchema
-from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
 
 
 
@@ -105,10 +106,38 @@ def login():
 @jwt_required()
 def logout():
 
+    jti = get_jwt()["jti"]
+
+    blocked_token = TokenBlocklist(
+        jti=jti
+    )
+
+    db.session.add(
+        blocked_token
+    )
+
+    db.session.commit()
+
     return {
-        "message": "Logged out successfully"
+        "message":
+            "Successfully logged out"
     }, 200
 
+
+
+@auth_bp.route("/refresh",methods=["POST"])
+@jwt_required(refresh=True)
+def refresh():
+
+    user_id = get_jwt_identity()
+
+    access_token = create_access_token(
+        identity=user_id
+    )
+
+    return {
+        "access_token": access_token
+    }, 200
 
 
 

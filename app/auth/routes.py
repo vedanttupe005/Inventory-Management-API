@@ -130,9 +130,13 @@ def logout():
 def refresh():
 
     user_id = get_jwt_identity()
+    user = User.query.get(user_id)
 
     access_token = create_access_token(
-        identity=user_id
+        identity=str(user.id),
+        additional_claims={
+            "role": user.role
+        }
     )
 
     return {

@@ -13,9 +13,19 @@ from marshmallow import ValidationError
 @jwt_required()
 @role_required("admin", "user",'staff', "manager")
 def get_products():
-    products = db.session.query(Product).all()
+    products = db.session.query(Product).order_by(Product.category_id).all()
     return ProductResponseSchema(many=True).dump(products), 200
 
+
+@products_bp.route("/<int:product_id>", methods=["GET"])
+@jwt_required()
+@role_required("admin", "user",'staff', "manager")
+def get_product(product_id):
+    product = db.session.query(Product).filter_by(id=product_id).first()
+    if not product:
+        return {"error": "Product not found"}, 404
+
+    return ProductResponseSchema().dump(product), 200
 
 
 @products_bp.route("/", methods=["POST"])
@@ -26,6 +36,7 @@ def create_product():
         data = ProductCreateSchema().load(request.get_json())
     except ValidationError as err:
         return {"error": err.messages}, 400
+
 
     product = db.session.query(Product).filter_by(name=data['name']).first()
     if product:
@@ -50,3 +61,57 @@ def create_product():
             "name": product.name,
             "id" : product.id
             }, 201
+
+
+
+
+@products_bp.route("/<int:product_id>", methods=["PATCH"])
+@jwt_required()
+@role_required("admin","manager")
+def update_product(product_id):
+
+    product = db.session.query(Product).filter_by(id=product_id).first()
+    if not product:
+        return {"error": "Product not found"}, 404
+
+    try:
+        data = ProductUpdateSchema().load(request.get_json())
+    except ValidationError as err:
+        return {"error":err.messages},400
+
+    if "category_id" in data:
+        category = db.session.query(Catogary).filter_by(id  = data['category_id']).first()
+        if not category:
+            return {"error": "Category not found, create category frist "}, 404
+
+
+    for key, value in data.items():
+        setattr(product,key,value)
+
+    db.session.commit()
+
+    return {"message": "Product updated successfully",
+                "name": product.name,
+                "id" : product.id
+
+            }, 200
+
+
+@products_bp.route("/<int:product_id>",methods = ["DELETE"])
+@jwt_required()
+@role_required("admin","manager")
+def delete_product(product_id):
+    product = db.session.query(Product).filter_by(id=product_id).first()
+
+    if not product:
+        return {"error":"Product not found"}, 404
+
+    db.session.delete(product)
+    db.session.commit()
+
+    return {"message": "Product deleted successfully",
+            "id": product.id,
+            "name": product.name,
+            "description" : product.description
+
+            }, 200

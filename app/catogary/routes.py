@@ -65,7 +65,7 @@ def get_category(category_id):
 
 @category_bp.route("/<int:category_id>", methods=["PUT"])
 @jwt_required()
-@role_required("admin")
+@role_required("admin", "manager")
 def update_category(category_id):
 
     category = Catogary.query.get(category_id)
@@ -86,6 +86,7 @@ def update_category(category_id):
     return CategorySchema().dump(
         category
     ), 200
+
 
 @category_bp.route("/<int:category_id>", methods=["DELETE"])
 @jwt_required()

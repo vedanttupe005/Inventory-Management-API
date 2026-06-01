@@ -17,9 +17,9 @@ def create_app():
     from app import jwt_callback
 
     from app.auth import auth_bp
-    from app.catogary import catogary_bp
+    from app.catogary import category_bp
 
-    app.register_blueprint(catogary_bp)
+    app.register_blueprint(category_bp)
     app.register_blueprint(auth_bp)
 
 

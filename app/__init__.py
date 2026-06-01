@@ -10,6 +10,9 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
+    #because we want to return the json in the order we defined in the schema not in alphabetic order
+    app.json.sort_keys = False
+
     jwt.init_app(app)
     db.init_app(app)
     migrate.init_app(app, db)
@@ -18,7 +21,9 @@ def create_app():
 
     from app.auth import auth_bp
     from app.catogary import category_bp
+    from app.products import products_bp
 
+    app.register_blueprint(products_bp)
     app.register_blueprint(category_bp)
     app.register_blueprint(auth_bp)
 

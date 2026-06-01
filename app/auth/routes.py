@@ -69,14 +69,12 @@ def login():
 
     if not user:
         return {
-            "error": "Invalid credentials"
+            "error": "Invalid credentials user not found"
         }, 401
 
-    if not user.check_password(
-        data["password"]
-    ):
+    if not user.check_password(data["password"]):
         return {
-            "error": "Invalid credentials"
+            "error": "Invalid credentials incorrect password"
         }, 401
 
     access_token = create_access_token(

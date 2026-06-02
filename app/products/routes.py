@@ -13,8 +13,38 @@ from marshmallow import ValidationError
 @jwt_required()
 @role_required("admin", "user",'staff', "manager")
 def get_products():
-    products = db.session.query(Product).order_by(Product.category_id).all()
-    return ProductResponseSchema(many=True).dump(products), 200
+
+    # Get query parameters for filtering
+    search_name = request.args.get("name")
+
+    product_obj = db.session.query(Product)
+    if search_name:
+        product_obj = product_obj.filter(Product.name.ilike(f"%{search_name}%"))
+
+
+
+
+    # pagination
+    page = request.args.get("page", default= 1, type=int)
+    limit = request.args.get("limit",default=10,type=int)
+
+    if page < 1 or limit < 1:
+        return {"error": "Page and limit must be positive integers"}, 400
+    if limit > 100:
+        return {"error": "Limit must not exceed 100"}, 400
+
+
+    pagination = product_obj.paginate(page=page, per_page=limit, error_out=False)
+
+    products = ProductResponseSchema(many=True).dump(pagination.items)
+
+    return {
+        "page": pagination.page,
+        "per_page": pagination.per_page,
+        "total": pagination.total,
+        "pages": pagination.pages,
+        "items": products
+    }, 200
 
 
 @products_bp.route("/<int:product_id>", methods=["GET"])

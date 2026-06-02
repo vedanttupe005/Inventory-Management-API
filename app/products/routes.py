@@ -16,11 +16,55 @@ def get_products():
 
     # Get query parameters for filtering
     search_name = request.args.get("name")
+    category_name = request.args.get("category")
+    category_id = request.args.get("category_id", type=int)
+    price_lt = request.args.get("price_lt", type=float)#lt means less than
+    price_gt = request.args.get("price_gt", type=float)#gt means greater than
+    quantity_lt = request.args.get("quantity_lt", type=int)
+    quantity_gt = request.args.get("quantity_gt", type=int)
 
+
+    # filter mapping
     product_obj = db.session.query(Product)
-    if search_name:
-        product_obj = product_obj.filter(Product.name.ilike(f"%{search_name}%"))
 
+    if search_name  is not None:
+        product_obj = product_obj.filter(Product.name.ilike(f"%{search_name}%"))
+    if category_name is not None:
+        product_obj = product_obj.join(Catogary).filter(Catogary.name.ilike(f"%{category_name}%"))
+    if category_id is not None:
+        product_obj = product_obj.filter(Product.category_id == category_id)
+    if price_lt is not None:
+        product_obj = product_obj.filter(Product.price <= price_lt)
+    if price_gt is not None:
+        product_obj = product_obj.filter(Product.price >= price_gt)
+    if quantity_lt is not None:
+        product_obj = product_obj.filter(Product.quantity <= quantity_lt)
+    if quantity_gt is not None:
+        product_obj = product_obj.filter(Product.quantity >= quantity_gt)
+
+
+    # sorting
+    sort = request.args.get("sort")
+
+    if sort :
+        decending = sort.startswith("-") # if the sort field starts with "-" it means we want to sort in descending order
+        sort_field = sort.lstrip("-")
+
+        allowed_sort_fielda = {
+            "name": Product.name,
+            "price": Product.price,
+            "quantity": Product.quantity,
+            "category": Product.category_id,
+            "created_at": Product.created_at,
+            "updated_at": Product.updated_at
+        }
+
+        sort_column = allowed_sort_fielda.get(sort_field)
+
+        if sort_column is not None:
+            if decending:
+                sort_column = sort_column.desc()
+            product_obj = product_obj.order_by(sort_column)
 
 
 
@@ -47,6 +91,9 @@ def get_products():
     }, 200
 
 
+
+
+
 @products_bp.route("/<int:product_id>", methods=["GET"])
 @jwt_required()
 @role_required("admin", "user",'staff', "manager")
@@ -56,6 +103,9 @@ def get_product(product_id):
         return {"error": "Product not found"}, 404
 
     return ProductResponseSchema().dump(product), 200
+
+
+
 
 
 @products_bp.route("/", methods=["POST"])

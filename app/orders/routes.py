@@ -5,7 +5,7 @@ from app.model import Order, OrderItems, Product, InventoryLog
 from app.extensions import db
 from flask import request
 
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from app.utils.decorators import role_required
 
 
@@ -103,3 +103,22 @@ def create_order():
             "details": str(e)
         }, 500
 
+
+
+@orders_bp.route("/<int:order_id>", methods=["GET"])
+@jwt_required()
+@role_required("admin", "manager", "staff", "user")
+def get_order(order_id):
+
+    order = db.session.get(Order, order_id)
+
+    if not order:
+        return {"error": "Order not found"}, 404
+
+    role = get_jwt()["role"]
+
+    if role not in ["admin", "manager"]:
+        if order.user_id != get_jwt_identity():
+            return {"error": "Access denied"}, 403
+
+    return OrderResponseSchema().dump(order), 200

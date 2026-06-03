@@ -122,3 +122,29 @@ def get_order(order_id):
             return {"error": "Access denied"}, 403
 
     return OrderResponseSchema().dump(order), 200
+
+
+
+
+
+@orders_bp.route("/", methods=["GET"])
+@jwt_required()
+@role_required("admin", "manager", "staff", "user")
+def get_orders():
+
+    role = get_jwt()["role"]
+
+    query = Order.query
+
+    if role not in ["admin", "manager"]:
+        query = query.filter_by(
+            user_id=get_jwt_identity()
+        )
+
+    orders = query.order_by(
+        Order.created_at.desc()
+    ).all()
+
+    return {
+        "orders": OrderResponseSchema(many=True).dump(orders)
+    }, 200

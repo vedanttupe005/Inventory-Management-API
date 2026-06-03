@@ -110,7 +110,7 @@ def create_order():
 @role_required("admin", "manager", "staff", "user")
 def get_order(order_id):
 
-    order = db.session.get(Order, order_id)
+    order = db.session.query(Order).filter_by(id=order_id).first()
 
     if not order:
         return {"error": "Order not found"}, 404
@@ -147,4 +147,33 @@ def get_orders():
 
     return {
         "orders": OrderResponseSchema(many=True).dump(orders)
+    }, 200
+
+
+
+@order_bp.route("/<int:order_id>/status", methods=["PATCH"])
+@jwt_required()
+@role_required("admin", "manager")
+def update_order_status(order_id):
+
+    try:
+        data = UpdateOrderStatusSchema().load(
+            request.get_json()
+        )
+    except ValidationError as err:
+        return {"error": err.messages}, 400
+
+    order = db.session.get(Order, order_id)
+
+    if not order:
+        return {"error": "Order not found"}, 404
+
+    order.status = data["status"]
+
+    db.session.commit()
+
+    return {
+        "message": "Order status updated successfully",
+        "order_id": order.id,
+        "status": order.status
     }, 200

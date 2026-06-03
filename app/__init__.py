@@ -22,7 +22,9 @@ def create_app():
     from app.auth import auth_bp
     from app.catogary import category_bp
     from app.products import products_bp
+    from app.orders import orders_bp
 
+    app.register_blueprint(orders_bp)
     app.register_blueprint(products_bp)
     app.register_blueprint(category_bp)
     app.register_blueprint(auth_bp)

@@ -1,7 +1,7 @@
 from app.orders import orders_bp
 from app.schema.order_schema import OrderCreateSchema, OrderResponseSchema
 from marshmallow import ValidationError
-from app.model import Order, OrderItems, Product
+from app.model import Order, OrderItems, Product, InventoryLog
 from app.extensions import db
 from flask import request
 
@@ -18,47 +18,88 @@ def create_order():
     except ValidationError as err:
         return {"error": err.messages}, 400
 
-    order_items = []
-    total_amount = 0
-    for item in data['items']:
-        product = db.session.query(Product).filter_by(id = item['product_id']).first()
-        if not product:
-            return {"erroe": f"Product with id {item['product_id']} not found"}, 404
-        if product.quantity < item['quantity']:
-            return {"error": f"Not enough quantity for product {product.name}"}, 400
+    try:
+        total_amount = 0
+        validated_items = []
+        seen_products = set()
 
-        total_amount += product.price * item['quantity']
-        order_items.append({
-            "product_id": item['product_id'],
-            "quantity": item['quantity'],
-            "price": product.price
-        })
+        # Validation Phase
+        for item in data["items"]:
 
+            if item["product_id"] in seen_products:
+                return {
+                    "error": f"Duplicate product_id {item['product_id']} in order"
+                }, 400
 
+            seen_products.add(item["product_id"])
 
-    order = Order(
-        user_id = get_jwt_identity(),
-        total_amount=total_amount
-    )
-    db.session.add(order)
-    db.session.flush()# to get the order id before commit
+            product = Product.query.get(item["product_id"])
 
+            if not product:
+                return {
+                    "error": f"Product with id {item['product_id']} not found"
+                }, 404
 
-    for item in order_items:
-        product = db.session.query(Product).filter_by(id = item['product_id']).first()
-        order_item = OrderItems(
-            order_id = order.id,
-            product_id = item['product_id'],
-            quantity = item['quantity'],
-            price = item['price']
+            if product.quantity < item["quantity"]:
+                return {
+                    "error": f"Not enough stock for product {product.name}"
+                }, 400
+
+            total_amount += product.price * item["quantity"]
+
+            validated_items.append({
+                "product": product,
+                "quantity": item["quantity"]
+            })
+
+        # Create Order
+        order = Order(
+            user_id=get_jwt_identity(),
+            total_amount=total_amount
         )
-        db.session.add(order_item)
-        product.quantity -= item['quantity']
 
-    db.session.commit()
+        db.session.add(order)
+        db.session.flush()# to get the order ID before committing
 
-    return {"message": "Order created successfully",
+        # Create Order Items & Update Inventory
+        for item in validated_items:
+
+            product = item["product"]
+
+            order_item = OrderItems(
+                order_id=order.id,
+                product_id=product.id,
+                quantity=item["quantity"],
+                price=product.price
+            )
+
+            db.session.add(order_item)
+
+            product.quantity -= item["quantity"]
+
+            inventory_log = InventoryLog(
+                user_id=get_jwt_identity(),
+                product_id=product.id,
+                change_type="order",
+                quantity_changed=-item["quantity"]
+            )
+
+            db.session.add(inventory_log)
+
+        db.session.commit()
+
+        return {
+            "message": "Order created successfully",
             "order_id": order.id,
-            "total_amount": order.total_amount
-            }, 201
+            "status": order.status,
+            "total_amount": float(order.total_amount)
+        }, 201
+
+    except Exception as e:
+        db.session.rollback()
+
+        return {
+            "error": "Failed to create order",
+            "details": str(e)
+        }, 500
 

@@ -1,5 +1,5 @@
 from app.orders import orders_bp
-from app.schema.order_schema import OrderCreateSchema, OrderResponseSchema
+from app.schema.order_schema import OrderCreateSchema, OrderResponseSchema,OrderStatusUpdateSchema
 from marshmallow import ValidationError
 from app.model import Order, OrderItems, Product, InventoryLog
 from app.extensions import db
@@ -134,30 +134,47 @@ def get_orders():
 
     role = get_jwt()["role"]
 
-    query = Order.query
+    query = Order.query # build the base query
 
     if role not in ["admin", "manager"]:
         query = query.filter_by(
-            user_id=get_jwt_identity()
+            user_id=get_jwt_identity() # only return orders for the current user if not admin or manager build query don't execute it yet
         )
 
-    orders = query.order_by(
+    query = query.order_by(
         Order.created_at.desc()
-    ).all()
+    )
+
+    page = request.args.get("page", default=1, type=int)
+    limit = request.args.get("limit", default=10, type=int)
+
+    if page < 1 or limit < 1:
+        return {
+            "error": "Page and limit must be positive integers"}, 400
+    if limit > 100:
+        return {
+            "error": "Limit cannot exceed 100"}, 400
+
+    pagination = query.paginate(page=page, per_page=limit, error_out=False) # execute the query with pagination
+    paginated_orders = OrderResponseSchema(many=True).dump(pagination.items)
 
     return {
-        "orders": OrderResponseSchema(many=True).dump(orders)
+        "page": pagination.page,
+        "per_page": pagination.per_page,
+        "total": pagination.total,
+        "pages": pagination.pages,
+        "items": paginated_orders
     }, 200
 
 
 
-@order_bp.route("/<int:order_id>/status", methods=["PATCH"])
+@orders_bp.route("/<int:order_id>/status", methods=["PATCH"])
 @jwt_required()
 @role_required("admin", "manager")
 def update_order_status(order_id):
 
     try:
-        data = UpdateOrderStatusSchema().load(
+        data = OrderStatusUpdateSchema().load(
             request.get_json()
         )
     except ValidationError as err:
@@ -180,7 +197,7 @@ def update_order_status(order_id):
 
 
 
-@order_bp.route("/<int:order_id>/cancel", methods=["PATCH"])
+@orders_bp.route("/<int:order_id>/cancel", methods=["PATCH"])
 @jwt_required()
 @role_required("admin", "manager")
 def cancel_order(order_id):

@@ -177,3 +177,63 @@ def update_order_status(order_id):
         "order_id": order.id,
         "status": order.status
     }, 200
+
+
+
+@order_bp.route("/<int:order_id>/cancel", methods=["PATCH"])
+@jwt_required()
+@role_required("admin", "manager")
+def cancel_order(order_id):
+
+    try:
+
+        order = db.session.get(Order, order_id)
+
+        if not order:
+            return {
+                "error": "Order not found"
+            }, 404
+
+        if order.status == "cancelled":
+            return {
+                "error": "Order already cancelled"
+            }, 400
+
+        if order.status != "pending":
+            return {
+                "error": "Only pending orders can be cancelled"
+            }, 400
+
+        for item in order.items:
+
+            product = item.product
+
+            product.quantity += item.quantity
+
+            inventory_log = InventoryLog(
+                user_id=get_jwt_identity(),
+                product_id=product.id,
+                change_type="cancel_order",
+                quantity_changed=item.quantity
+            )
+
+            db.session.add(inventory_log)
+
+        order.status = "cancelled"
+
+        db.session.commit()
+
+        return {
+            "message": "Order cancelled successfully",
+            "order_id": order.id,
+            "status": order.status
+        }, 200
+
+    except Exception as e:
+
+        db.session.rollback()
+
+        return {
+            "error": "Failed to cancel order",
+            "details": str(e)
+        }, 500

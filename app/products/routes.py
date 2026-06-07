@@ -3,9 +3,10 @@ from flask import request
 from app.extensions import db
 from app.model.product import Product
 from app.model.catogary import Catogary
+from app.model.inventory_log import InventoryLog
 from app.schema.product_schema import ProductCreateSchema,ProductUpdateSchema, ProductResponseSchema
 
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.utils.decorators import role_required
 from marshmallow import ValidationError
 
@@ -135,7 +136,19 @@ def create_product():
     )
 
     db.session.add(product)
+    db.session.flush()
+
+    inventory_log = InventoryLog(
+        user_id = get_jwt_identity(),
+        product_id = product.id,
+        change_type = "addition (product created)",
+        quantity_changed = product.quantity
+
+    )
+
+    db.session.add(inventory_log)
     db.session.commit()
+
 
     return {"message": "Product created successfully",
             "name": product.name,
@@ -160,10 +173,23 @@ def update_product(product_id):
         return {"error":err.messages},400
 
     if "category_id" in data:
-        category = db.session.query(Catogary).filter_by(id  = data['category_id']).first()
+        category = db.session.query(Catogary).filter_by(id = data['category_id']).first()
         if not category:
             return {"error": "Category not found, create category frist "}, 404
 
+    if "quantity" in data:
+        quantity_change = data['quantity'] - product.quantity
+
+        if quantity_change != 0:
+            inventory_log = InventoryLog(
+                user_id = get_jwt_identity(),
+                product_id = product.id,
+                change_type = "stock adjustment",
+                quantity_changed = quantity_change
+
+            )
+
+        db.session.add(inventory_log)
 
     for key, value in data.items():
         setattr(product,key,value)
@@ -185,6 +211,7 @@ def delete_product(product_id):
 
     if not product:
         return {"error":"Product not found"}, 404
+
 
     db.session.delete(product)
     db.session.commit()

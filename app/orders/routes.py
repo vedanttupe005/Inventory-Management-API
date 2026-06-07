@@ -75,6 +75,12 @@ def create_order():
 
             db.session.add(order_item)
 
+            if item["quantity"] <= 0:
+                return {
+                    "error": f"Quantity for product {product.name} must be greater than 0"
+                }, 400
+
+
             product.quantity -= item["quantity"]
 
             inventory_log = InventoryLog(
@@ -165,6 +171,7 @@ def get_orders():
         "pages": pagination.pages,
         "items": paginated_orders
     }, 200
+
 
 
 

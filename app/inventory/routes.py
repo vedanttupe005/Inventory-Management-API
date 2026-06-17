@@ -34,4 +34,4 @@ def get_inventory_logs():
         "total": pagination.total,
         "pages": pagination.pages,
         "items": log
-    }
+    }, 200

@@ -23,7 +23,9 @@ def create_app():
     from app.catogary import category_bp
     from app.products import products_bp
     from app.orders import orders_bp
+    from app.inventory import inventory_bp
 
+    app.register_blueprint(inventory_bp)
     app.register_blueprint(orders_bp)
     app.register_blueprint(products_bp)
     app.register_blueprint(category_bp)

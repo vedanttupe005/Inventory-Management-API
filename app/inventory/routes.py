@@ -36,3 +36,25 @@ def get_inventory_logs():
         "items": log
     }, 200
 
+@inventory_bp.route("/logs/low-stock", methods=["GET"])
+@jwt_required()
+@role_required("admin", "staff", "manager","user")
+def get_low_stock_logs():
+    threshold = request.args.get("threshold", default=10, type=int)
+
+    low_stock_logs = db.session.query(model.InventoryLog).join(model.Product).filter(model.Product.quantity < threshold).order_by(model.InventoryLog.timestamp.desc())
+
+    page = request.args.get("page", 1, type=int)
+    limit = request.args.get("limit", 10, type=int)
+
+    pagination = low_stock_logs.paginate(page=page, per_page=limit, error_out=False)
+
+    log = InventoryLogResponseSchema(many=True).dump(pagination.items)
+
+    return {
+        "page": pagination.page,
+        "per_page": pagination.per_page,
+        "total": pagination.total,
+        "pages": pagination.pages,
+        "items": log
+    }, 200

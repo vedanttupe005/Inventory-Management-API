@@ -13,13 +13,13 @@ from app.schema.inventory_log_schema import  InventoryLogResponseSchema
 def get_inventory_logs():
     product_id = request.args.get("product_id",type=int)
     if product_id :
-        product_log = db.session.query(model.InventoryLog).filter_by(product_id=product_id).order_by(model.inventory_log.timestamp.desc()).all()
+        product_log = db.session.query(model.InventoryLog).filter_by(product_id=product_id).order_by(model.InventoryLog.timestamp.desc())
 
         if not product_log:
             return jsonify({"message": "No inventory logs found for the specified product_id."}), 404
 
-
-    product_log = db.session.query(model.InventoryLog).order_by(model.inventory_log.timestamp.desc()).all()
+    else:
+        product_log = db.session.query(model.InventoryLog).order_by(model.InventoryLog.timestamp.desc())
 
     page = request.args.get("page", 1, type=int)
     limit = request.args.get("limit", 10, type=int)
@@ -35,3 +35,4 @@ def get_inventory_logs():
         "pages": pagination.pages,
         "items": log
     }, 200
+

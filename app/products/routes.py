@@ -141,7 +141,7 @@ def create_product():
     inventory_log = InventoryLog(
         user_id = get_jwt_identity(),
         product_id = product.id,
-        change_type = "addition (product created)",
+        change_type = "product created",
         quantity_changed = product.quantity
 
     )

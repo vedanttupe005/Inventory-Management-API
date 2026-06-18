@@ -1,6 +1,6 @@
 from app.products import products_bp
 from flask import request
-from app.extensions import db
+from app.extensions import db,cache
 from app.model.product import Product
 from app.model.catogary import Catogary
 from app.model.inventory_log import InventoryLog
@@ -13,8 +13,9 @@ from marshmallow import ValidationError
 @products_bp.route("/", methods=["GET"])
 @jwt_required()
 @role_required("admin", "user",'staff', "manager")
+@cache.cached(timeout=300, query_string=True)
 def get_products():
-
+    print("cache missed")
     # Get query parameters for filtering
     search_name = request.args.get("name")
     category_name = request.args.get("category")
@@ -98,7 +99,9 @@ def get_products():
 @products_bp.route("/<int:product_id>", methods=["GET"])
 @jwt_required()
 @role_required("admin", "user",'staff', "manager")
+@cache.cached(timeout=300 ,query_string=True)
 def get_product(product_id):
+    print("cache missed")
     product = db.session.query(Product).filter_by(id=product_id).first()
     if not product:
         return {"error": "Product not found"}, 404
@@ -149,6 +152,7 @@ def create_product():
     db.session.add(inventory_log)
     db.session.commit()
 
+    cache.clear()
 
     return {"message": "Product created successfully",
             "name": product.name,
@@ -196,6 +200,8 @@ def update_product(product_id):
 
     db.session.commit()
 
+    cache.clear()
+
     return {"message": "Product updated successfully",
                 "name": product.name,
                 "id" : product.id
@@ -215,6 +221,8 @@ def delete_product(product_id):
 
     db.session.delete(product)
     db.session.commit()
+
+    cache.clear()
 
     return {"message": "Product deleted successfully",
             "id": product.id,

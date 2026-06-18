@@ -2,7 +2,7 @@ from . import category_bp
 from flask import request
 from marshmallow import ValidationError
 from app.schema.catogary_schema import CategoryCreateSchema, CategorySchema
-from app.extensions import db
+from app.extensions import db,cache
 from app.model.catogary import Catogary
 
 from flask_jwt_extended import jwt_required
@@ -12,9 +12,29 @@ from app.utils.decorators import role_required
 @category_bp.route("/", methods=["GET"])
 @jwt_required()
 @role_required("admin", "user",'staff', "manager")
+@cache.cached(timeout=60)
 def get_catogaries():
+    print("cache missed")
     catogaries = db.session.query(Catogary).all()
     return CategorySchema(many=True).dump(catogaries), 200
+
+
+@category_bp.route("/<int:category_id>", methods=["GET"])
+@jwt_required()
+@role_required("admin", "user",'staff', "manager")
+@cache.cached(timeout=60, query_string=True)
+def get_category(category_id):
+
+    category = Catogary.query.get(category_id)
+
+    if not category:
+        return {
+            "error": "Category not found"
+        }, 404
+
+    return CategorySchema().dump(
+        category
+    ), 200
 
 
 @category_bp.route("/", methods=["POST"])
@@ -39,6 +59,8 @@ def create_catogary():
     db.session.add(category)
     db.session.commit()
 
+    # clearing cache from get_catogaries function after creating a new category
+    cache.delete_memoized(get_catogaries)
 
     return {"message": "Catogary created successfully",
             "name": category.name,
@@ -46,20 +68,7 @@ def create_catogary():
             }, 201
 
 
-@category_bp.route("/<int:category_id>", methods=["GET"])
-@jwt_required()
-def get_category(category_id):
 
-    category = Catogary.query.get(category_id)
-
-    if not category:
-        return {
-            "error": "Category not found"
-        }, 404
-
-    return CategorySchema().dump(
-        category
-    ), 200
 
 
 
@@ -82,6 +91,7 @@ def update_category(category_id):
     category.name = data["name"]
 
     db.session.commit()
+
 
     return CategorySchema().dump(
         category

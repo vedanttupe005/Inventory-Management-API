@@ -42,12 +42,6 @@ def create_app():
 
 
 
-    @app.route("/cache-test")
-    def cache_test():
-        cache.set("my_key", "hello redis")
 
-        return {
-            "value": cache.get("my_key")
-        }
 
     return app

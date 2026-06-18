@@ -2,7 +2,7 @@ from app.orders import orders_bp
 from app.schema.order_schema import OrderCreateSchema, OrderResponseSchema,OrderStatusUpdateSchema
 from marshmallow import ValidationError
 from app.model import Order, OrderItems, Product, InventoryLog
-from app.extensions import db
+from app.extensions import db, cache
 from flask import request
 
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
@@ -93,6 +93,8 @@ def create_order():
             db.session.add(inventory_log)
 
         db.session.commit()
+
+        cache.clear()  # Clear cache to reflect updated inventory and orders
 
         return {
             "message": "Order created successfully",
@@ -196,6 +198,8 @@ def update_order_status(order_id):
 
     db.session.commit()
 
+    cache.clear()
+
     return {
         "message": "Order status updated successfully",
         "order_id": order.id,
@@ -246,6 +250,8 @@ def cancel_order(order_id):
         order.status = "cancelled"
 
         db.session.commit()
+
+        cache.clear()
 
         return {
             "message": "Order cancelled successfully",

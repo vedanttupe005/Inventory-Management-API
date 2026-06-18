@@ -12,7 +12,7 @@ from app.utils.decorators import role_required
 @category_bp.route("/", methods=["GET"])
 @jwt_required()
 @role_required("admin", "user",'staff', "manager")
-@cache.cached(timeout=60)
+@cache.cached(key_prefix="categories_list", timeout=300)
 def get_catogaries():
     print("cache missed")
     catogaries = db.session.query(Catogary).all()
@@ -22,7 +22,7 @@ def get_catogaries():
 @category_bp.route("/<int:category_id>", methods=["GET"])
 @jwt_required()
 @role_required("admin", "user",'staff', "manager")
-@cache.cached(timeout=60, query_string=True)
+@cache.cached(timeout=300, key_prefix=lambda: f"category_{request.view_args['category_id']}") # create custome prefix for cache key using the category_id from the request view args
 def get_category(category_id):
 
     category = Catogary.query.get(category_id)
@@ -31,7 +31,7 @@ def get_category(category_id):
         return {
             "error": "Category not found"
         }, 404
-
+    print("cache missed")
     return CategorySchema().dump(
         category
     ), 200
@@ -59,8 +59,9 @@ def create_catogary():
     db.session.add(category)
     db.session.commit()
 
-    # clearing cache from get_catogaries function after creating a new category
-    cache.delete_memoized(get_catogaries)
+    # clearing cache from of get_category route
+    cache.delete("categories_list")
+    cache.delete(f"category_{category.id}")
 
     return {"message": "Catogary created successfully",
             "name": category.name,
@@ -92,6 +93,8 @@ def update_category(category_id):
 
     db.session.commit()
 
+    cache.delete("categories_list")
+    cache.delete(f"category_{category.id}")
 
     return CategorySchema().dump(
         category
@@ -117,6 +120,10 @@ def delete_category(category_id):
 
     db.session.delete(category)
     db.session.commit()
+
+
+    cache.delete("categories_list")
+    cache.delete(f"category_{category.id}")
 
     return {
         "message": "Category deleted successfully"

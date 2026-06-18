@@ -10,7 +10,6 @@ from app.schema.inventory_log_schema import  InventoryLogResponseSchema
 @inventory_bp.route("/logs", methods=["GET"])
 @jwt_required()
 @role_required("admin", "staff", "manager","user")
-@cache.cached(timeout=300, query_string=True)
 def get_inventory_logs():
     product_id = request.args.get("product_id",type=int)
     if product_id :

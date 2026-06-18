@@ -1,7 +1,7 @@
 from app.inventory import inventory_bp
 from flask import Blueprint, request, jsonify
 from app import model
-from app.extensions import db
+from app.extensions import db,cache
 from flask_jwt_extended import jwt_required
 from app.utils.decorators import role_required
 
@@ -10,6 +10,7 @@ from app.schema.inventory_log_schema import  InventoryLogResponseSchema
 @inventory_bp.route("/logs", methods=["GET"])
 @jwt_required()
 @role_required("admin", "staff", "manager","user")
+@cache.cached(timeout=300, query_string=True)
 def get_inventory_logs():
     product_id = request.args.get("product_id",type=int)
     if product_id :
@@ -39,6 +40,7 @@ def get_inventory_logs():
 @inventory_bp.route("/logs/low-stock", methods=["GET"])
 @jwt_required()
 @role_required("admin", "staff", "manager","user")
+@cache.cached(timeout=300, query_string=True)
 def get_low_stock_logs():
     threshold = request.args.get("threshold", default=10, type=int)
 

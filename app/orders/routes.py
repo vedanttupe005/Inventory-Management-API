@@ -2,7 +2,7 @@ from app.orders import orders_bp
 from app.schema.order_schema import OrderCreateSchema, OrderResponseSchema,OrderStatusUpdateSchema
 from marshmallow import ValidationError
 from app.model import Order, OrderItems, Product, InventoryLog
-from app.extensions import db, cache
+from app.extensions import db, cache,limiter
 from flask import request
 
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
@@ -12,6 +12,7 @@ from app.utils.decorators import role_required
 @orders_bp.route("/", methods=["POST"])
 @jwt_required()
 @role_required("admin", "user", "staff", "manager")
+@limiter.limit("10 per minute")
 def create_order():
     try:
         data = OrderCreateSchema().load(request.get_json())

@@ -1,6 +1,6 @@
 from app.products import products_bp
 from flask import request
-from app.extensions import db,cache
+from app.extensions import db,cache,limiter
 from app.model.product import Product
 from app.model.catogary import Catogary
 from app.model.inventory_log import InventoryLog
@@ -14,6 +14,7 @@ from marshmallow import ValidationError
 @jwt_required()
 @role_required("admin", "user",'staff', "manager")
 @cache.cached(timeout=300, query_string=True)
+@limiter.limit("10 per minute")
 def get_products():
     print("cache missed")
     # Get query parameters for filtering
@@ -100,6 +101,7 @@ def get_products():
 @jwt_required()
 @role_required("admin", "user",'staff', "manager")
 @cache.cached(timeout=300 ,query_string=True)
+@limiter.limit("10 per minute")
 def get_product(product_id):
     print("cache missed")
     product = db.session.query(Product).filter_by(id=product_id).first()

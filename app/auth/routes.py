@@ -127,6 +127,7 @@ def logout():
 
 @auth_bp.route("/refresh",methods=["POST"])
 @jwt_required(refresh=True)
+@limiter.limit("20 per minute")
 def refresh():
 
     user_id = get_jwt_identity()

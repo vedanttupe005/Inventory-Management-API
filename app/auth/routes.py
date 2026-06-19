@@ -4,7 +4,7 @@ from flask import request
 
 from app.model.user import User
 from app.model.token_blocklist import TokenBlocklist
-from app.extensions import db
+from app.extensions import db,limiter
 from app.schema.user_schema import RegisterSchema, LoginSchema,UserResponseSchema
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
 
@@ -13,6 +13,7 @@ from flask_jwt_extended import create_access_token, create_refresh_token, jwt_re
 
 
 @auth_bp.route("/register", methods=["POST"])
+@limiter.limit("5 per minute")
 def register():
 
     try:
@@ -51,6 +52,7 @@ def register():
 
 
 @auth_bp.route("/login", methods=["POST"])
+@limiter.limit("5 per minute")
 def login():
 
     try:

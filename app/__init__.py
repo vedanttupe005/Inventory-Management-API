@@ -1,5 +1,5 @@
 from flask import Flask
-from .extensions import db, migrate,jwt,cache,limiter
+from .extensions import db, migrate,jwt,cache,limiter,api
 from .config import Config
 from app.model.user import User
 from flask_jwt_extended import jwt_required
@@ -18,6 +18,7 @@ def create_app():
     migrate.init_app(app, db)
     cache.init_app(app)
     limiter.init_app(app)
+    api.init_app(app)
 
 
     from app import jwt_callback

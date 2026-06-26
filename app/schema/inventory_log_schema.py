@@ -27,3 +27,11 @@ class InventoryLogResponseSchema(Schema):
     quantity_changed = fields.Integer()
 
     timestamp = fields.DateTime()
+
+
+class InventoryLogPaginationSchema(Schema):
+    page = fields.Integer()
+    per_page = fields.Integer()
+    total = fields.Integer()
+    pages = fields.Integer()
+    items = fields.List(fields.Nested(InventoryLogResponseSchema))

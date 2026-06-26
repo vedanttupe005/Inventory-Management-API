@@ -31,7 +31,7 @@ def create_app():
 
     app.register_blueprint(inventory_bp)
     app.register_blueprint(orders_bp)
-    app.register_blueprint(products_bp)
+    api.register_blueprint(products_bp)
     api.register_blueprint(category_bp)
     api.register_blueprint(auth_bp)
 

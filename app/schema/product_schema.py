@@ -56,3 +56,17 @@ class ProductResponseSchema(Schema):
     created_at = fields.DateTime()
 
     updated_at = fields.DateTime()
+
+
+
+
+class ProductPaginationSchema(Schema):
+    page = fields.Integer()
+    per_page = fields.Integer()
+    total = fields.Integer()
+    pages = fields.Integer()
+    items = fields.List(fields.Nested(ProductResponseSchema))
+
+
+class MessageSchema(Schema):
+    message = fields.String(required=True)

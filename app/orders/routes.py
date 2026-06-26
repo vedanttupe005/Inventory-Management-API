@@ -1,5 +1,5 @@
 from app.orders import orders_bp
-from app.schema.order_schema import OrderCreateSchema, OrderResponseSchema,OrderStatusUpdateSchema
+from app.schema.order_schema import OrderCreateSchema, OrderResponseSchema,OrderStatusUpdateSchema,OrderPaginationSchema
 from marshmallow import ValidationError
 from app.model import Order, OrderItems, Product, InventoryLog
 from app.extensions import db, cache,limiter
@@ -10,14 +10,16 @@ from app.utils.decorators import role_required
 
 
 @orders_bp.route("/", methods=["POST"])
+@orders_bp.doc(
+    summary="Create an order",
+    description="""
+        Creates a new order, updates product inventory, and records inventory logs. Requires JWT authentication. Accessible by Admin, Manager, Staff, and User roles.""")
+@orders_bp.arguments(OrderCreateSchema)
+@orders_bp.response(201, OrderResponseSchema)
 @jwt_required()
 @role_required("admin", "user", "staff", "manager")
 @limiter.limit("10 per minute")
-def create_order():
-    try:
-        data = OrderCreateSchema().load(request.get_json())
-    except ValidationError as err:
-        return {"error": err.messages}, 400
+def create_order(data):
 
     try:
         total_amount = 0
@@ -41,6 +43,11 @@ def create_order():
                     "error": f"Product with id {item['product_id']} not found"
                 }, 404
 
+            if item["quantity"] <= 0:
+                return {
+                    "error": f"Quantity for product {product.name} must be greater than 0"
+                }, 400
+
             if product.quantity < item["quantity"]:
                 return {
                     "error": f"Not enough stock for product {product.name}"
@@ -60,7 +67,7 @@ def create_order():
         )
 
         db.session.add(order)
-        db.session.flush()# to get the order ID before committing
+        db.session.flush()
 
         # Create Order Items & Update Inventory
         for item in validated_items:
@@ -76,12 +83,6 @@ def create_order():
 
             db.session.add(order_item)
 
-            if item["quantity"] <= 0:
-                return {
-                    "error": f"Quantity for product {product.name} must be greater than 0"
-                }, 400
-
-
             product.quantity -= item["quantity"]
 
             inventory_log = InventoryLog(
@@ -95,14 +96,9 @@ def create_order():
 
         db.session.commit()
 
-        cache.clear()  # Clear cache to reflect updated inventory and orders
+        cache.clear()
 
-        return {
-            "message": "Order created successfully",
-            "order_id": order.id,
-            "status": order.status,
-            "total_amount": float(order.total_amount)
-        }, 201
+        return order
 
     except Exception as e:
         db.session.rollback()
@@ -115,6 +111,11 @@ def create_order():
 
 
 @orders_bp.route("/<int:order_id>", methods=["GET"])
+@orders_bp.doc(
+    summary="Get order by ID",
+    description="""
+        Returns the order associated with the specified ID. Admins and Managers can view any order, while Staff and Users can only view their own orders.""")
+@orders_bp.response(200, OrderResponseSchema)
 @jwt_required()
 @role_required("admin", "manager", "staff", "user")
 def get_order(order_id):
@@ -130,24 +131,50 @@ def get_order(order_id):
         if order.user_id != get_jwt_identity():
             return {"error": "Access denied"}, 403
 
-    return OrderResponseSchema().dump(order), 200
+    return order
 
 
 
 
 
 @orders_bp.route("/", methods=["GET"])
+@orders_bp.doc(
+    summary="Get all orders",
+    description="""
+        Returns a paginated list of orders. Admins and Managers can view all orders, while Staff and Users can only view their own orders.""",
+    parameters=[
+        {
+            "in": "query",
+            "name": "page",
+            "schema": {
+                "type": "integer",
+                "default": 1
+            },
+            "description": "Page number."
+        },
+        {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+                "type": "integer",
+                "default": 10
+            },
+            "description": "Number of orders per page (maximum 100)."
+        }
+    ]
+)
+@orders_bp.response(200, OrderPaginationSchema)
 @jwt_required()
 @role_required("admin", "manager", "staff", "user")
 def get_orders():
 
     role = get_jwt()["role"]
 
-    query = Order.query # build the base query
+    query = Order.query
 
     if role not in ["admin", "manager"]:
         query = query.filter_by(
-            user_id=get_jwt_identity() # only return orders for the current user if not admin or manager build query don't execute it yet
+            user_id=get_jwt_identity()
         )
 
     query = query.order_by(
@@ -159,36 +186,47 @@ def get_orders():
 
     if page < 1 or limit < 1:
         return {
-            "error": "Page and limit must be positive integers"}, 400
+            "error": "Page and limit must be positive integers"
+        }, 400
+
     if limit > 100:
         return {
-            "error": "Limit cannot exceed 100"}, 400
+            "error": "Limit cannot exceed 100"
+        }, 400
 
-    pagination = query.paginate(page=page, per_page=limit, error_out=False) # execute the query with pagination
-    paginated_orders = OrderResponseSchema(many=True).dump(pagination.items)
+    pagination = query.paginate(
+        page=page,
+        per_page=limit,
+        error_out=False
+    )
 
     return {
         "page": pagination.page,
         "per_page": pagination.per_page,
         "total": pagination.total,
         "pages": pagination.pages,
-        "items": paginated_orders
-    }, 200
+        "items": pagination.items
+    }
 
 
 
 
 @orders_bp.route("/<int:order_id>/status", methods=["PATCH"])
+@orders_bp.doc(
+    summary="Update order status",
+    description="""
+        Updates the status of an existing order.
+        Requires JWT authentication. Accessible by Admin and Manager roles.
+"pending",
+"processing",
+"completed",
+"cancelled"
+        """)
+@orders_bp.arguments(OrderStatusUpdateSchema)
+@orders_bp.response(200, OrderResponseSchema)
 @jwt_required()
 @role_required("admin", "manager")
-def update_order_status(order_id):
-
-    try:
-        data = OrderStatusUpdateSchema().load(
-            request.get_json()
-        )
-    except ValidationError as err:
-        return {"error": err.messages}, 400
+def update_order_status(data, order_id):
 
     order = db.session.get(Order, order_id)
 
@@ -201,15 +239,15 @@ def update_order_status(order_id):
 
     cache.clear()
 
-    return {
-        "message": "Order status updated successfully",
-        "order_id": order.id,
-        "status": order.status
-    }, 200
+    return order
 
 
 
 @orders_bp.route("/<int:order_id>/cancel", methods=["PATCH"])
+@orders_bp.doc(
+    summary="Cancel an order",
+    description="""Cancels a pending order, restores product inventory, and records inventory logs. Requires JWT authentication. Accessible by Admin and Manager roles.""")
+@orders_bp.response(200, OrderResponseSchema)
 @jwt_required()
 @role_required("admin", "manager")
 def cancel_order(order_id):
@@ -254,11 +292,7 @@ def cancel_order(order_id):
 
         cache.clear()
 
-        return {
-            "message": "Order cancelled successfully",
-            "order_id": order.id,
-            "status": order.status
-        }, 200
+        return order
 
     except Exception as e:
 

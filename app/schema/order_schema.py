@@ -56,3 +56,11 @@ class OrderStatusUpdateSchema(Schema):
             "cancelled"
         ])
     )
+
+
+class OrderPaginationSchema(Schema):
+    page = fields.Integer()
+    per_page = fields.Integer()
+    total = fields.Integer()
+    pages = fields.Integer()
+    items = fields.List(fields.Nested(OrderResponseSchema))

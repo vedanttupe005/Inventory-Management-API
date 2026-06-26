@@ -30,7 +30,7 @@ def create_app():
     from app.inventory import inventory_bp
 
     api.register_blueprint(inventory_bp)
-    app.register_blueprint(orders_bp)
+    api.register_blueprint(orders_bp)
     api.register_blueprint(products_bp)
     api.register_blueprint(category_bp)
     api.register_blueprint(auth_bp)

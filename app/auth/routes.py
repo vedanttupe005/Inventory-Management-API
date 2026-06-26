@@ -5,7 +5,7 @@ from flask import request
 from app.model.user import User
 from app.model.token_blocklist import TokenBlocklist
 from app.extensions import db,limiter
-from app.schema.user_schema import RegisterSchema, LoginSchema,UserResponseSchema
+from app.schema.user_schema import RegisterSchema, LoginSchema,UserResponseSchema,LoginResponseSchema,MessageSchema,RefreshResponseSchema
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
 
 
@@ -13,18 +13,14 @@ from flask_jwt_extended import create_access_token, create_refresh_token, jwt_re
 
 
 @auth_bp.route("/register", methods=["POST"])
+@auth_bp.doc(
+    summary="Register a new user",
+    description="""
+        Creates a new user account with a hashed password. This endpoint is publicly accessible and is rate limited to 5 requests per minute.""")
+@auth_bp.arguments(RegisterSchema)
+@auth_bp.response(201, UserResponseSchema)
 @limiter.limit("5 per minute")
-def register():
-
-    try:
-        data = RegisterSchema().load(
-            request.get_json()
-        )
-
-    except ValidationError as err:
-        return {
-            "errors": err.messages
-        }, 400
+def register(data):
 
     existing_user = User.query.filter_by(
         email=data["email"]
@@ -40,30 +36,24 @@ def register():
         email=data["email"]
     )
 
-    user.set_password(
-        data["password"]
-    )
+    user.set_password(data["password"])
 
     db.session.add(user)
     db.session.commit()
 
-    return UserResponseSchema().dump(user), 201
+    return user
 
 
 
 @auth_bp.route("/login", methods=["POST"])
+@auth_bp.doc(
+    summary="Login user",
+    description="""
+    Authenticates a user using their email and password. Returns JWT access and refresh tokens. This endpoint is publicly accessible and rate limited to 5 requests per minute.""")
+@auth_bp.arguments(LoginSchema)
+@auth_bp.response(200, LoginResponseSchema)
 @limiter.limit("5 per minute")
-def login():
-
-    try:
-        data = LoginSchema().load(
-            request.get_json()
-        )
-
-    except ValidationError as err:
-        return {
-            "errors": err.messages
-        }, 400
+def login(data):
 
     user = User.query.filter_by(
         email=data["email"]
@@ -71,12 +61,12 @@ def login():
 
     if not user:
         return {
-            "error": "Invalid credentials user not found"
+            "error": "Invalid credentials: user not found"
         }, 401
 
     if not user.check_password(data["password"]):
         return {
-            "error": "Invalid credentials incorrect password"
+            "error": "Invalid credentials: incorrect password"
         }, 401
 
     access_token = create_access_token(
@@ -93,39 +83,38 @@ def login():
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "role": user.role
-        }
-    }, 200
+        "user": user
+    }
 
 
 @auth_bp.route("/logout", methods=["POST"])
+@auth_bp.doc(
+    summary="Logout user",
+    description="""
+    Logs out the authenticated user by adding the current JWT to the token blocklist. Requires JWT authentication.""")
+@auth_bp.response(200, MessageSchema)
 @jwt_required()
 def logout():
 
     jti = get_jwt()["jti"]
 
-    blocked_token = TokenBlocklist(
-        jti=jti
-    )
+    blocked_token = TokenBlocklist(jti=jti)
 
-    db.session.add(
-        blocked_token
-    )
-
+    db.session.add(blocked_token)
     db.session.commit()
 
     return {
-        "message":
-            "Successfully logged out"
-    }, 200
+        "message": "Successfully logged out"
+    }
 
 
 
-@auth_bp.route("/refresh",methods=["POST"])
+@auth_bp.route("/refresh", methods=["POST"])
+@auth_bp.doc(
+    summary="Refresh access token",
+    description="""
+    Generates a new JWT access token using a valid refresh token. Requires JWT refresh authentication and is rate limited to 20 requests per minute.""")
+@auth_bp.response(200, RefreshResponseSchema)
 @jwt_required(refresh=True)
 @limiter.limit("20 per minute")
 def refresh():
@@ -142,8 +131,7 @@ def refresh():
 
     return {
         "access_token": access_token
-
-    }, 200
+    }
 
 
 

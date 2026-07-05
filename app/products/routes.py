@@ -4,7 +4,7 @@ from app.extensions import db,cache,limiter
 from app.model.product import Product
 from app.model.catogary import Catogary
 from app.model.inventory_log import InventoryLog
-from app.schema.product_schema import ProductCreateSchema,ProductUpdateSchema, ProductResponseSchema,ProductPaginationSchema,MessageSchema
+from app.schema.product_schema import ProductCreateSchema,ProductUpdateSchema, ProductResponseSchema,ProductPaginationSchema,Product_Delete_MessageSchema
 
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.utils.decorators import role_required
@@ -322,7 +322,7 @@ def update_product(data, product_id):
         }
     ]
 )
-@products_bp.response(200, MessageSchema)
+@products_bp.response(200, Product_Delete_MessageSchema)
 @jwt_required()
 @role_required("admin", "manager")
 def delete_product(product_id):

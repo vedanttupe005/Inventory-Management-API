@@ -5,7 +5,7 @@ from flask import request
 from app.model.user import User
 from app.model.token_blocklist import TokenBlocklist
 from app.extensions import db,limiter
-from app.schema.user_schema import RegisterSchema, LoginSchema,UserResponseSchema,LoginResponseSchema,MessageSchema,RefreshResponseSchema
+from app.schema.user_schema import RegisterSchema, LoginSchema,UserResponseSchema,LoginResponseSchema,User_Logout_MessageSchema,RefreshResponseSchema
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
 
 
@@ -92,7 +92,7 @@ def login(data):
     summary="Logout user",
     description="""
     Logs out the authenticated user by adding the current JWT to the token blocklist. Requires JWT authentication.""")
-@auth_bp.response(200, MessageSchema)
+@auth_bp.response(200, User_Logout_MessageSchema)
 @jwt_required()
 def logout():
 

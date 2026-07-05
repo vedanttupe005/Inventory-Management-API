@@ -68,5 +68,5 @@ class ProductPaginationSchema(Schema):
     items = fields.List(fields.Nested(ProductResponseSchema))
 
 
-class MessageSchema(Schema):
+class Product_Delete_MessageSchema(Schema):
     message = fields.String(required=True)

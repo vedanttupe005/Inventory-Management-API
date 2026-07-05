@@ -6,9 +6,9 @@ from flask_jwt_extended import jwt_required
 from app.utils.decorators import role_required
 
 
-def create_app():
+def create_app(config_class=Config):
     app = Flask(__name__)
-    app.config.from_object(Config)
+    app.config.from_object(config_class)
 
     #because we want to return the json in the order we defined in the schema not in alphabetic order
     app.json.sort_keys = False

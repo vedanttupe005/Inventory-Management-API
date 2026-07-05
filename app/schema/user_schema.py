@@ -37,7 +37,7 @@ class LoginResponseSchema(Schema):
 
 
 
-class MessageSchema(Schema):
+class User_Logout_MessageSchema(Schema):
     message = fields.String(required=True)
 
 

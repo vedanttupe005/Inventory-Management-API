@@ -6,7 +6,7 @@ from app.extensions import db
 
 
 
-pytest.fixture()
+@pytest.fixture() # used to create a test app and database
 def app():
     app = create_app(TestingConfig)
     with app.app_context():
@@ -18,7 +18,9 @@ def app():
         db.drop_all()
 
 
-pytest.fixture()
+@pytest.fixture() # used to send request like postman
 def client(app):
     return app.test_client()
+
+
 

@@ -301,3 +301,130 @@ def test_login_invalid_email(client):
     response_data = response.get_json()
 
     assert "email" in response_data["errors"]["json"]
+
+
+
+#----------------------Refresh Token Tests----------------------
+#----------------------Refresh Token Tests----------------------
+
+
+def test_refresh_success(client):
+    register_data = {
+        "username": "Vedant",
+        "email": "vedant@test.com",
+        "password": "Password123"
+    }
+
+    # Register the user
+    response = client.post(
+        "/api/v1/auth/register",
+        json=register_data
+    )
+
+    assert response.status_code == 201
+
+    # Login to obtain tokens
+    login_data = {
+        "email": "vedant@test.com",
+        "password": "Password123"
+    }
+
+    response = client.post(
+        "/api/v1/auth/login",
+        json=login_data
+    )
+
+    assert response.status_code == 200
+
+    login_response = response.get_json()
+
+    refresh_token = login_response["refresh_token"]
+
+    # Request a new access token using the refresh token
+    response = client.post(
+        "/api/v1/auth/refresh",
+        headers={
+            "Authorization": f"Bearer {refresh_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    response_data = response.get_json()
+
+    assert "access_token" in response_data
+    assert response_data["access_token"]
+
+
+
+def test_refresh_with_access_token(client):
+    register_data = {
+        "username": "Vedant",
+        "email": "vedant@test.com",
+        "password": "Password123"
+    }
+
+    # Register user
+    response = client.post(
+        "/api/v1/auth/register",
+        json=register_data
+    )
+
+    assert response.status_code == 201
+
+    # Login user
+    login_data = {
+        "email": "vedant@test.com",
+        "password": "Password123"
+    }
+
+    response = client.post(
+        "/api/v1/auth/login",
+        json=login_data
+    )
+
+    assert response.status_code == 200
+
+    login_response = response.get_json()
+
+    access_token = login_response["access_token"]
+
+    # Try to use an access token on the refresh endpoint
+    response = client.post(
+        "/api/v1/auth/refresh",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 422
+
+    response_data = response.get_json()
+
+    assert response_data["msg"] == "Only refresh tokens are allowed"
+
+
+
+def test_refresh_missing_token(client):
+    response = client.post("/api/v1/auth/refresh")
+
+    assert response.status_code == 401
+
+    response_data = response.get_json()
+
+    assert response_data["msg"] == "Missing Authorization Header"
+
+
+def test_refresh_invalid_token(client):
+    response = client.post(
+        "/api/v1/auth/refresh",
+        headers={
+            "Authorization": "Bearer invalid_token"
+        }
+    )
+
+    assert response.status_code == 422
+
+    response_data = response.get_json()
+
+    assert response_data["msg"] == "Not enough segments"

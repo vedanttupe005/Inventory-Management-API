@@ -19,3 +19,6 @@ class TokenBlocklist(db.Model):
         db.DateTime,
         default=db.func.current_timestamp()
     )
+
+
+

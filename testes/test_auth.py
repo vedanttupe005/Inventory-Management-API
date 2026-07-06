@@ -1,4 +1,6 @@
 from app.model.user import User
+from flask_jwt_extended import decode_token
+from app.model.token_blocklist import TokenBlocklist
 
 def test_register_success(client):
     data = {
@@ -428,3 +430,80 @@ def test_refresh_invalid_token(client):
     response_data = response.get_json()
 
     assert response_data["msg"] == "Not enough segments"
+
+
+
+
+
+
+
+#================================Logout Tests================================
+#================================Logout Tests================================
+
+
+
+def test_logout_success(client):
+    register_data = {
+        "username": "Vedant",
+        "email": "vedant@test.com",
+        "password": "Password123"
+    }
+
+    # Register user
+    response = client.post(
+        "/api/v1/auth/register",
+        json=register_data
+    )
+
+    assert response.status_code == 201
+
+    # Login user
+    login_data = {
+        "email": "vedant@test.com",
+        "password": "Password123"
+    }
+
+    response = client.post(
+        "/api/v1/auth/login",
+        json=login_data
+    )
+
+    assert response.status_code == 200
+
+    login_response = response.get_json()
+
+    access_token = login_response["access_token"]
+
+    # Logout
+    response = client.post(
+        "/api/v1/auth/logout",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    response_data = response.get_json()
+
+    assert response_data["message"] == "Successfully logged out"
+
+    # Verify token was added to the blocklist
+    decoded_token = decode_token(access_token)
+
+    blocked_token = TokenBlocklist.query.filter_by(
+        jti=decoded_token["jti"]
+    ).first()
+
+    assert blocked_token is not None
+
+
+
+def test_logout_missing_token(client):
+    response = client.post("/api/v1/auth/logout")
+
+    assert response.status_code == 401
+
+    response_data = response.get_json()
+
+    assert response_data["msg"] == "Missing Authorization Header"

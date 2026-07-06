@@ -1,6 +1,7 @@
 from app.auth import auth_bp
 from marshmallow import ValidationError
 from flask import request
+from flask_smorest import abort
 
 from app.model.user import User
 from app.model.token_blocklist import TokenBlocklist
@@ -27,9 +28,7 @@ def register(data):
     ).first()
 
     if existing_user:
-        return {
-            "error": "Email already registered"
-        }, 409
+        abort(409, message="Email already registered")
 
     user = User(
         username=data["username"],

@@ -507,3 +507,63 @@ def test_logout_missing_token(client):
     response_data = response.get_json()
 
     assert response_data["msg"] == "Missing Authorization Header"
+
+
+
+def test_revoked_token_cannot_access_protected_route(client):
+    register_data = {
+        "username": "Vedant",
+        "email": "vedant@test.com",
+        "password": "Password123"
+    }
+
+    # Register
+    response = client.post(
+        "/api/v1/auth/register",
+        json=register_data
+    )
+    assert response.status_code == 201
+
+    # Login
+    response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": register_data["email"],
+            "password": register_data["password"]
+        }
+    )
+    assert response.status_code == 200
+
+    access_token = response.get_json()["access_token"]
+
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+
+    # Token should work before logout
+    response = client.get(
+        "/api/v1/categories/",
+        headers=headers
+    )
+
+    assert response.status_code == 200
+
+    # Logout
+    response = client.post(
+        "/api/v1/auth/logout",
+        headers=headers
+    )
+
+    assert response.status_code == 200
+
+    # Same token should no longer work
+    response = client.get(
+        "/api/v1/categories/",
+        headers=headers
+    )
+
+    assert response.status_code == 401
+
+    response_data = response.get_json()
+
+    assert response_data["msg"] == "Token has been revoked"

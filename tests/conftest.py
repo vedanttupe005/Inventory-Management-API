@@ -31,8 +31,8 @@ def client(app):
 def get_access_token(client):
     def _get_access_token(role="user"):
         register_data = {
-            "username": "testuser",
-            "email": "test@test.com",
+            "username": f"{role}_testuser",
+            "email": f"{role}_test@test.com",
             "password": "Password123"
         }
 

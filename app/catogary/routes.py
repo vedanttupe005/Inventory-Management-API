@@ -1,5 +1,6 @@
 from . import category_bp
 from flask import request
+from flask_smorest import abort
 from marshmallow import ValidationError
 from app.schema.catogary_schema import CategoryCreateSchema, CategorySchema
 from app.extensions import db,cache
@@ -49,7 +50,7 @@ def get_category(category_id):
     category = Catogary.query.get(category_id)
 
     if not category:
-        return {"error": "Category not found"}, 404
+        abort(404, message="Category not found")
 
     print("cache missed")
 

@@ -41,7 +41,7 @@ class Config:
 
 
 class TestingConfig(Config):
-    SQLALCHEMY_DATABASE_URI = os.getenv('TEST_DATABASE_URL')
+    SQLALCHEMY_DATABASE_URI = os.getenv("TEST_DATABASE_URL")
     TESTING = True
     RATELIMIT_ENABLED = False
-
+    CACHE_TYPE = "NullCache"

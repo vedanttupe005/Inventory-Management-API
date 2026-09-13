@@ -299,3 +299,148 @@ def test_get_category_allowed_roles(client, get_access_token, role):
     )
 
     assert response.status_code == 200
+
+
+#================Update Category Test================#
+#================Update Category  Test================#
+
+
+def test_update_category_success(client, get_access_token):
+    access_token = get_access_token(role="admin")
+
+    # Create category
+    create_response = client.post(
+        "/api/v1/categories/",
+        json={"name": "Electronics"},
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    assert create_response.status_code == 201
+
+    category_id = create_response.get_json()["id"]
+
+    # Update category
+    response = client.put(
+        f"/api/v1/categories/{category_id}",
+        json={"name": "Computers"},
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    assert response.status_code == 200
+
+    data = response.get_json()
+
+    assert data["id"] == category_id
+    assert data["name"] == "Computers"
+
+
+def test_update_category_not_found(client, get_access_token):
+    access_token = get_access_token(role="admin")
+
+    response = client.put(
+        "/api/v1/categories/999",
+        json={"name": "Computers"},
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    assert response.status_code == 404
+
+    data = response.get_json()
+
+    print(data)
+
+
+def test_update_category_no_token(client):
+    response = client.put(
+        "/api/v1/categories/1",
+        json={"name": "Computers"}
+    )
+
+    assert response.status_code == 401
+
+    data = response.get_json()
+
+    assert data["msg"] == "Missing Authorization Header"
+
+
+def test_update_category_invalid_token(client):
+    response = client.put(
+        "/api/v1/categories/1",
+        json={"name": "Computers"},
+        headers={"Authorization": "Bearer invalid_token"}
+    )
+
+    assert response.status_code == 422
+
+    data = response.get_json()
+
+    assert "msg" in data
+
+
+@pytest.mark.parametrize(
+    "role",
+    ["user", "staff"]
+)
+def test_update_category_unauthorized(client, get_access_token, role):
+    access_token = get_access_token(role=role)
+
+    response = client.put(
+        "/api/v1/categories/1",
+        json={"name": "Computers"},
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.parametrize(
+    "role",
+    ["admin", "manager"]
+)
+def test_update_category_allowed_roles(client, get_access_token, role):
+    access_token = get_access_token(role=role)
+
+    # Create category using admin
+    admin_token = (
+        access_token
+        if role == "admin"
+        else get_access_token(role="admin")
+    )
+
+    create_response = client.post(
+        "/api/v1/categories/",
+        json={"name": "Electronics"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+
+    assert create_response.status_code == 201
+
+    category_id = create_response.get_json()["id"]
+
+    # Update using the role being tested
+    response = client.put(
+        f"/api/v1/categories/{category_id}",
+        json={"name": "Computers"},
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    assert response.status_code == 200
+
+
+def test_update_category_missing_name(client, get_access_token):
+    access_token = get_access_token(role="admin")
+
+    response = client.put(
+        "/api/v1/categories/1",
+        json={},
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+
+    assert response.status_code == 422
+
+
+#================Delete Category Test================#
+#================Delete Category  Test================#
+
+
+

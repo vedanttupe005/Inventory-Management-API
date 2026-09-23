@@ -4,6 +4,7 @@ from app import create_app
 from app.model.user import User
 from app.config import TestingConfig
 from app.extensions import db
+from app.model import Catogary, Product, InventoryLog
 
 
 
@@ -66,6 +67,78 @@ def get_access_token(client):
         return response.get_json()["access_token"]
 
     return _get_access_token
+
+
+@pytest.fixture
+def inventory_logs(app):
+    with app.app_context():
+
+        user = User(
+            username="testuser",
+            email="testuser@example.com",
+            role="admin"
+        )
+        user.set_password("password123")
+
+        category = Catogary(
+            name="Electronics"
+        )
+
+        db.session.add_all([user, category])
+        db.session.commit()
+
+        product1 = Product(
+            name="Laptop",
+            description="Gaming laptop",
+            price=50000,
+            quantity=10,
+            category_id=category.id
+        )
+
+        product2 = Product(
+            name="Mouse",
+            description="Wireless mouse",
+            price=1000,
+            quantity=20,
+            category_id=category.id
+        )
+
+        db.session.add_all([product1, product2])
+        db.session.commit()
+
+        log1 = InventoryLog(
+            user_id=user.id,
+            product_id=product1.id,
+            change_type="addition",
+            quantity_changed=10
+        )
+
+        log2 = InventoryLog(
+            user_id=user.id,
+            product_id=product1.id,
+            change_type="subtraction",
+            quantity_changed=2
+        )
+
+        log3 = InventoryLog(
+            user_id=user.id,
+            product_id=product2.id,
+            change_type="addition",
+            quantity_changed=20
+        )
+
+        db.session.add_all([log1, log2, log3])
+        db.session.commit()
+
+        return {
+            "user": user,
+            "category": category,
+            "product1": product1,
+            "product2": product2,
+            "product1_id": product1.id,
+            "product2_id": product2.id,
+            "logs": [log1, log2, log3]
+        }
 
 
 

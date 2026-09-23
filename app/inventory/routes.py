@@ -77,6 +77,8 @@ def get_inventory_logs():
 
 
 
+
+
 @inventory_bp.route("/logs/low-stock", methods=["GET"])
 @inventory_bp.doc(
     summary="Get low stock inventory logs",

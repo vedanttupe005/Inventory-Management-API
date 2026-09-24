@@ -494,5 +494,6 @@ def test_get_low_stock_logs_second_page(
     assert data["per_page"] == 1
     assert data["total"] == 2
     assert data["pages"] == 2
+
     assert len(data["items"]) == 1
 

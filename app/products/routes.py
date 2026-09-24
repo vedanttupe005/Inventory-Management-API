@@ -1,5 +1,6 @@
 from app.products import products_bp
 from flask import request
+from flask_smorest import abort
 from app.extensions import db,cache,limiter
 from app.model.product import Product
 from app.model.catogary import Catogary
@@ -156,10 +157,10 @@ def get_products():
     limit = request.args.get("limit", default=10, type=int)
 
     if page < 1 or limit < 1:
-        return {"error": "Page and limit must be positive integers"}, 400
+        abort(http_status_code=400, message="Page and limit must be greater than 0")
 
     if limit > 100:
-        return {"error": "Limit must not exceed 100"}, 400
+        abort(http_status_code=400, message="Limit must be less than or equal to 100")
 
     pagination = product_obj.paginate(
         page=page,
@@ -195,7 +196,7 @@ def get_product(product_id):
     product = db.session.query(Product).filter_by(id=product_id).first()
 
     if not product:
-        return {"error": "Product not found"}, 404
+        abort(http_status_code=404, message="Product not found")
 
     return product
 

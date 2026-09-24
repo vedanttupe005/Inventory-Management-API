@@ -230,3 +230,68 @@ def low_stock_inventory_logs(app):
             "logs": [log1, log2, log3]
         }
 
+
+@pytest.fixture
+def category(app):
+    with app.app_context():
+        electronics = Catogary(name="Electronics")
+        furniture = Catogary(name="Furniture")
+        db.session.add_all([electronics, furniture])
+        db.session.commit()
+        return [[electronics.id, furniture.id], [electronics.name, furniture.name]]  # Return both IDs and objects for flexibility
+
+
+@pytest.fixture
+def products(app, category):
+    with app.app_context():
+
+
+
+        products = [
+            Product(
+                name="Laptop",
+                description="Business laptop",
+
+                price=50000,
+                quantity=10,
+                category_id=category[0][0]
+            ),
+            Product(
+                name="Mouse",
+                description="Wireless mouse",
+
+                price=500,
+                quantity=25,
+                category_id=category[0][0]
+            ),
+            Product(
+                name="Keyboard",
+                description="Mechanical keyboard",
+
+                price=2500,
+                quantity=15,
+                category_id=category[0][0]
+            ),
+            Product(
+                name="Office Chair",
+                description="Ergonomic office chair",
+
+                price=8000,
+                quantity=5,
+                category_id=category[0][1]
+            ),
+            Product(
+                name="Desk",
+                description="Office desk",
+
+                price=12000,
+                quantity=8,
+                category_id=category[0][1]
+            )
+        ]
+
+        db.session.add_all(products)
+        db.session.commit()
+
+        return products
+

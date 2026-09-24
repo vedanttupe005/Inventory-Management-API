@@ -58,8 +58,14 @@ def get_inventory_logs():
             .order_by(model.InventoryLog.timestamp.desc())
         )
 
-    page = request.args.get("page", 1, type=int)
-    limit = request.args.get("limit", 10, type=int)
+    page = request.args.get("page", default=1, type=int)
+    limit = request.args.get("limit",default= 10, type=int)
+
+    if page < 1:
+        return {"error": "Page must be greater than 0"}, 400
+
+    if limit < 1 or limit > 100:
+        return {"error": "Limit must be between 1 and 100"}, 400
 
     pagination = product_log.paginate(
         page=page,

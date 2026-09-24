@@ -69,6 +69,8 @@ def get_access_token(client):
     return _get_access_token
 
 
+
+
 @pytest.fixture
 def inventory_logs(app):
     with app.app_context():
@@ -141,4 +143,90 @@ def inventory_logs(app):
         }
 
 
+@pytest.fixture
+def low_stock_inventory_logs(app):
+    with app.app_context():
+
+        category = Catogary(
+            name="Electronics"
+        )
+
+        db.session.add(category)
+        db.session.commit()
+
+        product1 = Product(
+            name="Laptop",
+            description="Gaming laptop",
+            price=50000,
+            quantity=5,
+            category_id=category.id
+        )
+
+        product2 = Product(
+            name="Keyboard",
+            description="Mechanical keyboard",
+            price=3000,
+            quantity=10,
+            category_id=category.id
+        )
+
+        product3 = Product(
+            name="Mouse",
+            description="Wireless mouse",
+            price=1000,
+            quantity=20,
+            category_id=category.id
+        )
+
+        db.session.add_all([
+            product1,
+            product2,
+            product3
+        ])
+        db.session.commit()
+
+        user = User(
+            username="inventoryuser",
+            email="inventory@example.com",
+            role="admin"
+        )
+
+        user.set_password("password123")
+
+        db.session.add(user)
+        db.session.commit()
+
+        log1 = InventoryLog(
+            user_id=user.id,
+            product_id=product1.id,
+            change_type="addition",
+            quantity_changed=5
+        )
+
+        log2 = InventoryLog(
+            user_id=user.id,
+            product_id=product2.id,
+            change_type="addition",
+            quantity_changed=10
+        )
+
+        log3 = InventoryLog(
+            user_id=user.id,
+            product_id=product3.id,
+            change_type="addition",
+            quantity_changed=20
+        )
+
+        db.session.add_all([
+            log1,
+            log2,
+            log3
+        ])
+        db.session.commit()
+
+        return {
+            "products": [product1, product2, product3],
+            "product_ids": [product1.id, product2.id, product3.id],
+            "logs": [log1, log2, log3]
+        }
 

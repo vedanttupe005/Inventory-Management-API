@@ -4,6 +4,8 @@ from marshmallow import ValidationError
 from app.model import Order, OrderItems, Product, InventoryLog
 from app.extensions import db, cache,limiter
 from flask import request
+from flask_smorest import abort
+from werkzeug.exceptions import HTTPException
 
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from app.utils.decorators import role_required
@@ -30,28 +32,21 @@ def create_order(data):
         for item in data["items"]:
 
             if item["product_id"] in seen_products:
-                return {
-                    "error": f"Duplicate product_id {item['product_id']} in order"
-                }, 400
+                abort(400, message=f"Duplicate product_id {item['product_id']} in order items")
+
 
             seen_products.add(item["product_id"])
 
             product = Product.query.get(item["product_id"])
 
             if not product:
-                return {
-                    "error": f"Product with id {item['product_id']} not found"
-                }, 404
+                abort(400, message=f"Product with id {item['product_id']} does not exist")
 
             if item["quantity"] <= 0:
-                return {
-                    "error": f"Quantity for product {product.name} must be greater than 0"
-                }, 400
+                abort(400, message=f"Quantity for product {product.name} must be greater than 0")
 
             if product.quantity < item["quantity"]:
-                return {
-                    "error": f"Not enough stock for product {product.name}"
-                }, 400
+                abort(400, message=f"Insufficient stock for product {product.name}. Available: {product.quantity}, Requested: {item['quantity']}")
 
             total_amount += product.price * item["quantity"]
 
@@ -100,13 +95,13 @@ def create_order(data):
 
         return order
 
+    except HTTPException:
+        raise
+
     except Exception as e:
         db.session.rollback()
 
-        return {
-            "error": "Failed to create order",
-            "details": str(e)
-        }, 500
+        abort(500, message=f"Failed to create order: {str(e)}")
 
 
 

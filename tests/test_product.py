@@ -1,7 +1,8 @@
 #================== Get products with searching,sorting,pagination, filtering ==================
 #================== Get products with searching,sorting,pagination, filtering ==================
 import pytest
-from app.model import Product
+from app.model import Product,InventoryLog
+
 
 
 def test_get_products_no_token(client):
@@ -541,5 +542,358 @@ def test_get_product_by_id(
     assert response.status_code == 200
     assert response.json["id"] == product.id
     assert response.json["name"] == product.name
+
+
+
+
+
+#================== Test create product   ==================
+#================== Test create product   ==================
+
+
+
+
+
+@pytest.mark.parametrize("role", ["admin", "manager"])
+def test_create_product_success(
+    client,
+    get_access_token,
+    category,
+    role
+):
+    access_token = get_access_token(role=role)
+
+    response = client.post(
+        "/api/v1/products/",
+        json={
+            "name": "Monitor",
+            "description": "24 inch monitor",
+            "price": 15000,
+            "quantity": 20,
+            "category_id": category[0][0]
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 201
+
+    data = response.json
+
+    assert data["name"] == "Monitor"
+    assert data["description"] == "24 inch monitor"
+    assert data["price"] == 15000
+    assert data["quantity"] == 20
+    assert data["category_id"] == category[0][0]
+
+
+
+def test_create_product_no_token(
+    client,
+    category
+):
+    response = client.post(
+        "/api/v1/products/",
+        json={
+            "name": "Monitor",
+            "description": "24 inch monitor",
+            "price": 15000,
+            "quantity": 20,
+            "category_id": category[0][0]
+        }
+    )
+
+    assert response.status_code == 401
+    assert response.json["msg"] == "Missing Authorization Header"
+
+
+def test_create_product_invalid_token(
+    client,
+    category
+):
+    response = client.post(
+        "/api/v1/products/",
+        json={
+            "name": "Monitor",
+            "description": "24 inch monitor",
+            "price": 15000,
+            "quantity": 20,
+            "category_id": category[0][0]
+        },
+        headers={
+            "Authorization": "Bearer invalid-token"
+        }
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("role",["user", "staff"])
+def test_create_product_user_forbidden(
+    client,
+    get_access_token,
+    category,
+    role
+):
+    access_token = get_access_token(role=role)
+
+    response = client.post(
+        "/api/v1/products/",
+        json={
+            "name": "Monitor",
+            "description": "24 inch monitor",
+            "price": 15000,
+            "quantity": 20,
+            "category_id": category[0][0]
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 403
+
+
+def test_create_product_duplicate_name(
+    client,
+    get_access_token,
+    products,
+    category
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.post(
+        "/api/v1/products/",
+        json={
+            "name": "Laptop",
+            "description": "Another laptop",
+            "price": 60000,
+            "quantity": 5,
+            "category_id": category[0][0]
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 409
+
+    assert response.json["message"] == (
+        "Product with this name already exists"
+    )
+
+
+def test_create_product_category_not_found(
+    client,
+    get_access_token
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.post(
+        "/api/v1/products/",
+        json={
+            "name": "Monitor",
+            "description": "24 inch monitor",
+            "price": 15000,
+            "quantity": 20,
+            "category_id": 99999
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 404
+
+    assert response.json["message"] == (
+        "Category not found. Create the category first."
+    )
+
+
+def test_create_product_missing_name(
+    client,
+    get_access_token,
+    category
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.post(
+        "/api/v1/products/",
+        json={
+            "description": "24 inch monitor",
+            "price": 15000,
+            "quantity": 20,
+            "category_id": category[0][0]
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_product_missing_price(
+    client,
+    get_access_token,
+    category
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.post(
+        "/api/v1/products/",
+        json={
+            "name": "Monitor",
+            "description": "24 inch monitor",
+            "quantity": 20,
+            "category_id": category[0][0]
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_product_missing_quantity(
+    client,
+    get_access_token,
+    category
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.post(
+        "/api/v1/products/",
+        json={
+            "name": "Monitor",
+            "description": "24 inch monitor",
+            "price": 15000,
+            "category_id": category[0][0]
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_product_missing_category_id(
+    client,
+    get_access_token
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.post(
+        "/api/v1/products/",
+        json={
+            "name": "Monitor",
+            "description": "24 inch monitor",
+            "price": 15000,
+            "quantity": 20
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_product_negative_price(
+    client,
+    get_access_token,
+    category
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.post(
+        "/api/v1/products/",
+        json={
+            "name": "Monitor",
+            "description": "24 inch monitor",
+            "price": -100,
+            "quantity": 20,
+            "category_id": category[0][0]
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_product_negative_quantity(
+    client,
+    get_access_token,
+    category
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.post(
+        "/api/v1/products/",
+        json={
+            "name": "Monitor",
+            "description": "24 inch monitor",
+            "price": 15000,
+            "quantity": -5,
+            "category_id": category[0][0]
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 422
+
+
+def test_create_product_creates_inventory_log(
+    app,
+    client,
+    get_access_token,
+    category
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.post(
+        "/api/v1/products/",
+        json={
+            "name": "Projector",
+            "description": "Office projector",
+            "price": 40000,
+            "quantity": 5,
+            "category_id": category[0][0]
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 201
+
+    product_id = response.json["id"]
+
+    with app.app_context():
+        log = InventoryLog.query.filter_by(
+            product_id=product_id
+        ).first()
+
+        assert log is not None
+        assert log.change_type == "product created"
+        assert log.quantity_changed == 5
+
+
+
+
+
+
+#================== Test create product   ==================
+#================== Test create product   ==================
+
+
+
 
 

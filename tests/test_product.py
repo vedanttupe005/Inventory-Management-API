@@ -1316,5 +1316,197 @@ def test_update_product_multiple_fields(
 
 
 
+#================== Test Delete product   ==================
+#================== Test Delete product   ==================
+
+
+
+
+
+@pytest.mark.parametrize("role", ["admin", "manager"])
+def test_delete_product_success_admin(
+    app,
+    client,
+    get_access_token,
+    products,
+    role
+):
+    access_token = get_access_token(role=role)
+
+    with app.app_context():
+        product = Product.query.filter_by(
+            name="Laptop"
+        ).first()
+
+        product_id = product.id
+
+    response = client.delete(
+        f"/api/v1/products/{product_id}",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    assert response.json["message"] == (
+        "Product deleted successfully"
+    )
+
+
+def test_delete_product_no_token(
+    app,
+    client,
+    products
+):
+    with app.app_context():
+        product = Product.query.filter_by(
+            name="Laptop"
+        ).first()
+
+        product_id = product.id
+
+    response = client.delete(
+        f"/api/v1/products/{product_id}"
+    )
+
+    assert response.status_code == 401
+    assert response.json["msg"] == "Missing Authorization Header"
+
+
+def test_delete_product_invalid_token(
+    app,
+    client,
+    products
+):
+    with app.app_context():
+        product = Product.query.filter_by(
+            name="Laptop"
+        ).first()
+
+        product_id = product.id
+
+    response = client.delete(
+        f"/api/v1/products/{product_id}",
+        headers={
+            "Authorization": "Bearer invalid-token"
+        }
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("role", ["user", "staff"])
+def test_delete_product_user_forbidden(
+    app,
+    client,
+    get_access_token,
+    products,
+    role
+):
+    access_token = get_access_token(role=role)
+
+    with app.app_context():
+        product = Product.query.filter_by(
+            name="Laptop"
+        ).first()
+
+        product_id = product.id
+
+    response = client.delete(
+        f"/api/v1/products/{product_id}",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 403
+
+
+def test_delete_product_not_found(
+    client,
+    get_access_token
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.delete(
+        "/api/v1/products/99999",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 404
+
+    assert response.json["message"] == "Product not found"
+
+
+def test_delete_product_removed_from_database(
+    app,
+    client,
+    get_access_token,
+    products
+):
+    access_token = get_access_token(role="admin")
+
+    with app.app_context():
+        product = Product.query.filter_by(
+            name="Laptop"
+        ).first()
+
+        product_id = product.id
+
+    response = client.delete(
+        f"/api/v1/products/{product_id}",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    with app.app_context():
+        deleted_product = Product.query.filter_by(
+            id=product_id
+        ).first()
+
+        assert deleted_product is None
+
+
+def test_delete_product_twice(
+    app,
+    client,
+    get_access_token,
+    products
+):
+    access_token = get_access_token(role="admin")
+
+    with app.app_context():
+        product = Product.query.filter_by(
+            name="Laptop"
+        ).first()
+
+        product_id = product.id
+
+    first_response = client.delete(
+        f"/api/v1/products/{product_id}",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert first_response.status_code == 200
+
+    second_response = client.delete(
+        f"/api/v1/products/{product_id}",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert second_response.status_code == 404
+    assert second_response.json["message"] == "Product not found"
+
+
 
 

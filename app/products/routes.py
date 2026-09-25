@@ -203,6 +203,7 @@ def get_product(product_id):
 
 
 
+
 @products_bp.route("/", methods=["POST"])
 @products_bp.doc(
     summary="Create a product",
@@ -325,7 +326,7 @@ def delete_product(product_id):
     product = db.session.query(Product).filter_by(id=product_id).first()
 
     if not product:
-        return {"error": "Product not found"}, 404
+        abort(http_status_code=404, message="Product not found")
 
     db.session.delete(product)
     db.session.commit()

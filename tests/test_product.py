@@ -890,8 +890,429 @@ def test_create_product_creates_inventory_log(
 
 
 
-#================== Test create product   ==================
-#================== Test create product   ==================
+#================== Test Update product   ==================
+#================== Test Update product   ==================
+
+
+
+
+
+
+@pytest.mark.parametrize("role", ["admin", "manager"])
+def test_update_product_success_admin(
+    app,
+    client,
+    get_access_token,
+    products,
+    role
+):
+    access_token = get_access_token(role=role)
+
+    with app.app_context():
+        product = Product.query.filter_by(
+            name="Laptop"
+        ).first()
+
+        product_id = product.id
+
+    response = client.patch(
+        f"/api/v1/products/{product_id}",
+        json={
+            "name": "Gaming Laptop",
+            "price": 60000
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    data = response.json
+
+    assert data["name"] == "Gaming Laptop"
+    assert data["price"] == 60000
+
+
+def test_update_product_no_token(
+    app,
+    client,
+    products
+):
+    with app.app_context():
+        product = Product.query.filter_by(
+            name="Laptop"
+        ).first()
+
+        product_id = product.id
+
+    response = client.patch(
+        f"/api/v1/products/{product_id}",
+        json={
+            "price": 55000
+        }
+    )
+
+    assert response.status_code == 401
+    assert response.json["msg"] == "Missing Authorization Header"
+
+
+def test_update_product_invalid_token(
+    app,
+    client,
+    products
+):
+    with app.app_context():
+        product = Product.query.filter_by(
+            name="Laptop"
+        ).first()
+
+        product_id = product.id
+
+    response = client.patch(
+        f"/api/v1/products/{product_id}",
+        json={
+            "price": 55000
+        },
+        headers={
+            "Authorization": "Bearer invalid-token"
+        }
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("role", ["user", "staff"])
+def test_update_product_user_forbidden(
+    app,
+    client,
+    get_access_token,
+    products,
+    role
+):
+    access_token = get_access_token(role=role)
+
+    with app.app_context():
+        product = Product.query.filter_by(
+            name="Laptop"
+        ).first()
+
+        product_id = product.id
+
+    response = client.patch(
+        f"/api/v1/products/{product_id}",
+        json={
+            "price": 55000
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 403
+
+
+def test_update_product_not_found(
+    client,
+    get_access_token
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.patch(
+        "/api/v1/products/99999",
+        json={
+            "price": 55000
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 404
+
+    assert response.json["message"] == "Product not found"
+
+
+def test_update_product_category(
+    app,
+    client,
+    get_access_token,
+    products,
+    category
+):
+    access_token = get_access_token(role="admin")
+
+    with app.app_context():
+        product = Product.query.filter_by(
+            name="Laptop"
+        ).first()
+
+        product_id = product.id
+
+    furniture_id = category[0][1]
+
+    response = client.patch(
+        f"/api/v1/products/{product_id}",
+        json={
+            "category_id": furniture_id
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    assert response.json["category_id"] == furniture_id
+
+
+def test_update_product_category_not_found(
+    app,
+    client,
+    get_access_token,
+    products
+):
+    access_token = get_access_token(role="admin")
+
+    with app.app_context():
+        product = Product.query.filter_by(
+            name="Laptop"
+        ).first()
+
+        product_id = product.id
+
+    response = client.patch(
+        f"/api/v1/products/{product_id}",
+        json={
+            "category_id": 99999
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 404
+
+    assert response.json["message"] == (
+        "Category not found. Create the category first."
+    )
+
+
+def test_update_product_quantity_increase_creates_inventory_log(
+    app,
+    client,
+    get_access_token,
+    products
+):
+    access_token = get_access_token(role="admin")
+
+    with app.app_context():
+        product = Product.query.filter_by(
+            name="Laptop"
+        ).first()
+
+        product_id = product.id
+
+    response = client.patch(
+        f"/api/v1/products/{product_id}",
+        json={
+            "quantity": 15
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+    assert response.json["quantity"] == 15
+
+    with app.app_context():
+        log = InventoryLog.query.filter_by(
+            product_id=product_id,
+            change_type="stock adjustment"
+        ).first()
+
+        assert log is not None
+        assert log.quantity_changed == 5
+
+
+def test_update_product_quantity_decrease_creates_inventory_log(
+    app,
+    client,
+    get_access_token,
+    products
+):
+    access_token = get_access_token(role="admin")
+
+    with app.app_context():
+        product = Product.query.filter_by(
+            name="Laptop"
+        ).first()
+
+        product_id = product.id
+
+    response = client.patch(
+        f"/api/v1/products/{product_id}",
+        json={
+            "quantity": 7
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+    assert response.json["quantity"] == 7
+
+    with app.app_context():
+        log = InventoryLog.query.filter_by(
+            product_id=product_id,
+            change_type="stock adjustment"
+        ).first()
+
+        assert log is not None
+        assert log.quantity_changed == -3
+
+
+def test_update_product_same_quantity_does_not_create_inventory_log(
+    app,
+    client,
+    get_access_token,
+    products
+):
+    access_token = get_access_token(role="admin")
+
+    with app.app_context():
+        product = Product.query.filter_by(
+            name="Laptop"
+        ).first()
+
+        product_id = product.id
+
+        existing_logs = InventoryLog.query.filter_by(
+            product_id=product_id,
+            change_type="stock adjustment"
+        ).count()
+
+    response = client.patch(
+        f"/api/v1/products/{product_id}",
+        json={
+            "quantity": 10
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+    assert response.json["quantity"] == 10
+
+    with app.app_context():
+        new_logs = InventoryLog.query.filter_by(
+            product_id=product_id,
+            change_type="stock adjustment"
+        ).count()
+
+        assert new_logs == existing_logs
+
+
+def test_update_product_negative_quantity(
+    app,
+    client,
+    get_access_token,
+    products
+):
+    access_token = get_access_token(role="admin")
+
+    with app.app_context():
+        product = Product.query.filter_by(
+            name="Laptop"
+        ).first()
+
+        product_id = product.id
+
+    response = client.patch(
+        f"/api/v1/products/{product_id}",
+        json={
+            "quantity": -5
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 422
+
+
+def test_update_product_negative_price(
+    app,
+    client,
+    get_access_token,
+    products
+):
+    access_token = get_access_token(role="admin")
+
+    with app.app_context():
+        product = Product.query.filter_by(
+            name="Laptop"
+        ).first()
+
+        product_id = product.id
+
+    response = client.patch(
+        f"/api/v1/products/{product_id}",
+        json={
+            "price": -100
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 422
+
+
+def test_update_product_multiple_fields(
+    app,
+    client,
+    get_access_token,
+    products,
+    category
+):
+    access_token = get_access_token(role="admin")
+
+    with app.app_context():
+        product = Product.query.filter_by(
+            name="Laptop"
+        ).first()
+
+        product_id = product.id
+
+    response = client.patch(
+        f"/api/v1/products/{product_id}",
+        json={
+            "name": "Gaming Laptop",
+            "description": "High performance gaming laptop",
+            "price": 75000,
+            "quantity": 20,
+            "category_id": category[0][1]
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    data = response.json
+
+    assert data["name"] == "Gaming Laptop"
+    assert data["description"] == "High performance gaming laptop"
+    assert data["price"] == 75000
+    assert data["quantity"] == 20
+    assert data["category_id"] == category[0][1]
+
+
 
 
 

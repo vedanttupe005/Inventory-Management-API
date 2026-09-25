@@ -270,7 +270,7 @@ def update_product(data, product_id):
     product = db.session.query(Product).filter_by(id=product_id).first()
 
     if not product:
-        return {"error": "Product not found"}, 404
+        abort(http_status_code=404, message="Product not found")
 
     if "category_id" in data:
         category = db.session.query(Catogary).filter_by(
@@ -278,9 +278,7 @@ def update_product(data, product_id):
         ).first()
 
         if not category:
-            return {
-                "error": "Category not found. Create the category first."
-            }, 404
+            abort(http_status_code=404, message="Category not found. Create the category first.")
 
     if "quantity" in data:
         quantity_change = data["quantity"] - product.quantity

@@ -250,19 +250,13 @@ def cancel_order(order_id):
         order = db.session.get(Order, order_id)
 
         if not order:
-            return {
-                "error": "Order not found"
-            }, 404
+            abort(404, message="Order not found")
 
         if order.status == "cancelled":
-            return {
-                "error": "Order already cancelled"
-            }, 400
+            abort(400, message="Order is already cancelled")
 
         if order.status != "pending":
-            return {
-                "error": "Only pending orders can be cancelled"
-            }, 400
+            abort(400, message="Only pending orders can be cancelled")
 
         for item in order.items:
 
@@ -287,11 +281,11 @@ def cancel_order(order_id):
 
         return order
 
+    except HTTPException:
+        raise
+
     except Exception as e:
 
         db.session.rollback()
 
-        return {
-            "error": "Failed to cancel order",
-            "details": str(e)
-        }, 500
+        abort(500, message=f"Failed to cancel order: {str(e)}")

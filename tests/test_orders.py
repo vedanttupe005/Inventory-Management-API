@@ -1003,8 +1003,11 @@ def test_get_orders_user_returns_only_own_order(
 
 
 
+
+
 #================== Test Get All Order ==================
 #================== Test Get All Order ==================
+
 
 
 
@@ -1239,3 +1242,301 @@ def test_update_order_status_saved_to_database(
 
         assert updated_order is not None
         assert updated_order.status == "completed"
+
+
+
+
+
+
+#================== Test Cancel Order ==================
+#================== Test Cancel Order ==================
+@pytest.mark.parametrize("role", ["admin", "manager"])
+def test_cancel_order_admin_manager(
+    app,
+    client,
+    get_access_token,
+    order,
+    role
+):
+    access_token = get_access_token(role=role)
+
+    order_id = order(user_role="user")
+
+    with app.app_context():
+        product = Product.query.filter_by(name="Laptop").first()
+        initial_quantity = product.quantity
+
+    response = client.patch(
+        f"/api/v1/orders/{order_id}/cancel",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    data = response.json
+
+    assert data["id"] == order_id
+    assert data["status"] == "cancelled"
+
+    with app.app_context():
+        product = Product.query.filter_by(name="Laptop").first()
+
+        # Order fixture ordered 2 laptops
+        assert product.quantity == initial_quantity + 2
+
+
+@pytest.mark.parametrize("role", ["staff", "user"])
+def test_cancel_order_user_staff_forbidden(
+    client,
+    get_access_token,
+    order,
+    role
+):
+    access_token = get_access_token(role=role)
+
+    order_id = order(user_role="user")
+
+    response = client.patch(
+        f"/api/v1/orders/{order_id}/cancel",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 403
+
+
+def test_cancel_order_no_token(
+    client,
+    order
+):
+    order_id = order(user_role="user")
+
+    response = client.patch(
+        f"/api/v1/orders/{order_id}/cancel"
+    )
+
+    assert response.status_code == 401
+
+    assert response.json["msg"] == "Missing Authorization Header"
+
+
+def test_cancel_order_invalid_token(
+    client,
+    order
+):
+    order_id = order(user_role="user")
+
+    response = client.patch(
+        f"/api/v1/orders/{order_id}/cancel",
+        headers={
+            "Authorization": "Bearer invalid-token"
+        }
+    )
+
+    assert response.status_code == 422
+
+
+def test_cancel_order_not_found(
+    client,
+    get_access_token
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.patch(
+        "/api/v1/orders/99999/cancel",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 404
+
+
+def test_cancel_order_already_cancelled(
+    app,
+    client,
+    get_access_token,
+    order
+):
+    order_id = order(user_role="user")
+
+    with app.app_context():
+        existing_order = db.session.get(Order, order_id)
+
+        existing_order.status = "cancelled"
+
+        db.session.commit()
+
+    access_token = get_access_token(role="admin")
+
+    response = client.patch(
+        f"/api/v1/orders/{order_id}/cancel",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 400
+
+
+def test_cancel_order_processing(
+    app,
+    client,
+    get_access_token,
+    order
+):
+    order_id = order(user_role="user")
+
+    with app.app_context():
+        existing_order = db.session.get(Order, order_id)
+
+        existing_order.status = "processing"
+
+        db.session.commit()
+
+    access_token = get_access_token(role="admin")
+
+    response = client.patch(
+        f"/api/v1/orders/{order_id}/cancel",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 400
+
+
+def test_cancel_order_completed(
+    app,
+    client,
+    get_access_token,
+    order
+):
+    order_id = order(user_role="user")
+
+    with app.app_context():
+        existing_order = db.session.get(Order, order_id)
+
+        existing_order.status = "completed"
+
+        db.session.commit()
+
+    access_token = get_access_token(role="admin")
+
+    response = client.patch(
+        f"/api/v1/orders/{order_id}/cancel",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 400
+
+
+def test_cancel_order_creates_inventory_log(
+    app,
+    client,
+    get_access_token,
+    order
+):
+    order_id = order(user_role="user")
+
+    access_token = get_access_token(role="admin")
+
+    response = client.patch(
+        f"/api/v1/orders/{order_id}/cancel",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    with app.app_context():
+        log = InventoryLog.query.filter_by(
+            product_id=Product.query.filter_by(
+                name="Laptop"
+            ).first().id,
+            change_type="cancel_order"
+        ).first()
+
+        assert log is not None
+        assert log.quantity_changed == 2
+
+
+def test_cancel_order_status_saved(
+    app,
+    client,
+    get_access_token,
+    order
+):
+    order_id = order(user_role="user")
+
+    access_token = get_access_token(role="admin")
+
+    response = client.patch(
+        f"/api/v1/orders/{order_id}/cancel",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    with app.app_context():
+        cancelled_order = db.session.get(Order, order_id)
+
+        assert cancelled_order is not None
+        assert cancelled_order.status == "cancelled"
+
+    def test_cancel_order_restores_inventory_and_creates_log(
+            app,
+            client,
+            get_access_token,
+            order
+    ):
+        order_id = order(user_role="user")
+
+        with app.app_context():
+            product = Product.query.filter_by(
+                name="Laptop"
+            ).first()
+
+            initial_quantity = product.quantity
+
+        access_token = get_access_token(role="admin")
+
+        response = client.patch(
+            f"/api/v1/orders/{order_id}/cancel",
+            headers={
+                "Authorization": f"Bearer {access_token}"
+            }
+        )
+
+        assert response.status_code == 200
+        assert response.json["status"] == "cancelled"
+
+        with app.app_context():
+            product = Product.query.filter_by(
+                name="Laptop"
+            ).first()
+
+            assert product.quantity == initial_quantity + 2
+
+            log = InventoryLog.query.filter_by(
+                product_id=product.id,
+                change_type="cancel_order"
+            ).first()
+
+            assert log is not None
+            assert log.quantity_changed == 2
+
+            cancelled_order = db.session.get(
+                Order,
+                order_id
+            )
+
+            assert cancelled_order.status == "cancelled"

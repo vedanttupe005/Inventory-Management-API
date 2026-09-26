@@ -182,14 +182,10 @@ def get_orders():
     limit = request.args.get("limit", default=10, type=int)
 
     if page < 1 or limit < 1:
-        return {
-            "error": "Page and limit must be positive integers"
-        }, 400
+        abort(400, message="Page and limit must be greater than 0")
 
     if limit > 100:
-        return {
-            "error": "Limit cannot exceed 100"
-        }, 400
+        abort(400, message="Limit must not exceed 100")
 
     pagination = query.paginate(
         page=page,

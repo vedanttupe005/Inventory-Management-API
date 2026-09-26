@@ -558,7 +558,7 @@ def test_create_order_empty_items(
 
 
 #================== Test Get Order by ID ==================
-#================== Test Get Order bu ID ==================
+#================== Test Get Order by ID ==================
 
 
 
@@ -681,3 +681,312 @@ def test_get_order_invalid_token(
     )
 
     assert response.status_code == 422
+
+
+
+
+
+#================== Test Get All Order ==================
+#================== Test Get All Order ==================
+
+
+
+
+@pytest.mark.parametrize("role", ["admin", "manager"])
+def test_get_orders_admin(
+    client,
+    get_access_token,
+    order,
+    role
+):
+    access_token = get_access_token(role=role)
+
+    order(user_role="user")
+    order(user_role="staff")
+    order(user_role="manager")
+
+
+
+    response = client.get(
+        "/api/v1/orders/",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    data = response.json
+
+    assert data["total"] == 3
+    assert len(data["items"]) == 3
+
+
+
+
+@pytest.mark.parametrize("role", ["user", "staff"])
+def test_get_orders_user_staff_only_own_orders(
+    client,
+    get_access_token,
+    order,
+    role
+):
+    access_token = get_access_token(role=role)
+    order(user_role="user")
+    order(user_role="staff")
+    order(user_role="manager")
+
+
+
+    response = client.get(
+        "/api/v1/orders/",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    data = response.json
+
+    assert data["total"] == 1
+    assert len(data["items"]) == 1
+
+
+def test_get_orders_default_pagination(
+    client,
+    get_access_token,
+    order
+):
+    access_token = get_access_token(role="admin")
+
+    order(user_role="admin")
+
+    response = client.get(
+        "/api/v1/orders/",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    data = response.json
+
+    assert data["page"] == 1
+    assert data["per_page"] == 10
+    assert data["total"] == 1
+    assert data["pages"] == 1
+
+
+def test_get_orders_pagination(
+    client,
+    get_access_token,
+    order
+):
+    access_token = get_access_token(role="user")
+
+    order(user_role="user")
+    order(user_role="user")
+    order(user_role="user")
+
+    response = client.get(
+        "/api/v1/orders/?page=1&limit=2",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    data = response.json
+
+    assert data["page"] == 1
+    assert data["per_page"] == 2
+    assert data["total"] == 3
+    assert data["pages"] == 2
+    assert len(data["items"]) == 2
+
+
+def test_get_orders_second_page(
+    client,
+    get_access_token,
+    order
+):
+    access_token = get_access_token(role="user")
+
+    order(user_role="user")
+    order(user_role="user")
+    order(user_role="user")
+
+
+    response = client.get(
+        "/api/v1/orders/?page=2&limit=2",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    data = response.json
+
+    assert data["page"] == 2
+    assert data["per_page"] == 2
+    assert data["total"] == 3
+    assert data["pages"] == 2
+    assert len(data["items"]) == 1
+
+
+def test_get_orders_invalid_page(
+    client,
+    get_access_token
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.get(
+        "/api/v1/orders/?page=0",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 400
+
+    assert response.json["message"] == (
+        "Page and limit must be greater than 0"
+    )
+
+
+def test_get_orders_negative_page(
+    client,
+    get_access_token
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.get(
+        "/api/v1/orders/?page=-1",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 400
+
+    assert response.json["message"] == (
+        "Page and limit must be greater than 0"
+    )
+
+
+def test_get_orders_zero_limit(
+    client,
+    get_access_token
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.get(
+        "/api/v1/orders/?limit=0",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 400
+
+    assert response.json["message"] == (
+        "Page and limit must be greater than 0"
+    )
+
+
+def test_get_orders_negative_limit(
+    client,
+    get_access_token
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.get(
+        "/api/v1/orders/?limit=-5",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 400
+
+    assert response.json["message"] == (
+        "Page and limit must be greater than 0"
+    )
+
+
+def test_get_orders_limit_exceeds_maximum(
+    client,
+    get_access_token
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.get(
+        "/api/v1/orders/?limit=101",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 400
+
+    assert response.json["message"] == (
+        "Limit must not exceed 100"
+    )
+
+
+def test_get_orders_no_token(client):
+
+    response = client.get(
+        "/api/v1/orders/"
+    )
+
+    assert response.status_code == 401
+
+    assert response.json["msg"] == (
+        "Missing Authorization Header"
+    )
+
+
+def test_get_orders_invalid_token(client):
+
+    response = client.get(
+        "/api/v1/orders/",
+        headers={
+            "Authorization": "Bearer invalid-token"
+        }
+    )
+
+    assert response.status_code == 422
+
+
+def test_get_orders_user_returns_only_own_order(
+    app,
+    client,
+    get_access_token,
+    order
+):
+    access_token = get_access_token(role="user")
+
+    user_order_id = order(user_role="user")
+    order(user_role="staff")
+    order(user_role="manager")
+
+
+
+    response = client.get(
+        "/api/v1/orders/",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    data = response.json
+
+    assert data["total"] == 1
+    assert data["items"][0]["id"] == user_order_id

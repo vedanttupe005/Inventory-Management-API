@@ -118,13 +118,15 @@ def get_order(order_id):
     order = db.session.query(Order).filter_by(id=order_id).first()
 
     if not order:
-        return {"error": "Order not found"}, 404
+        abort(404, message="Order not found")
+
 
     role = get_jwt()["role"]
 
+
     if role not in ["admin", "manager"]:
-        if order.user_id != get_jwt_identity():
-            return {"error": "Access denied"}, 403
+        if order.user_id != int(get_jwt_identity()):
+            abort(403, message="Forbidden: You are not allowed to access this order")
 
     return order
 

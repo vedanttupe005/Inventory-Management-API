@@ -4,7 +4,7 @@ from app import create_app
 from app.model.user import User
 from app.config import TestingConfig
 from app.extensions import db
-from app.model import Catogary, Product, InventoryLog
+from app.model import Catogary, Product, InventoryLog, Order, OrderItems
 
 
 
@@ -294,4 +294,54 @@ def products(app, category):
         db.session.commit()
 
         return products
+
+
+
+@pytest.fixture
+def order(app, products):
+    def _create_order(user_role="user"):
+        with app.app_context():
+
+            product = Product.query.filter_by(
+                name="Laptop"
+            ).first()
+
+            user = User.query.filter_by(
+                email=f"{user_role}_test@test.com"
+            ).first()
+
+            if not user:
+                user = User(
+                    username=f"{user_role}_testuser",
+                    email=f"{user_role}_test@test.com",
+
+                    role=user_role
+                )
+                user.set_password("Password123")
+                db.session.add(user)
+                db.session.flush()
+
+            order = Order(
+                user_id=user.id,
+                total_amount=product.price * 2
+            )
+
+            db.session.add(order)
+            db.session.flush()
+
+            order_item = OrderItems(
+                order_id=order.id,
+                product_id=product.id,
+                quantity=2,
+                price=product.price
+            )
+
+            db.session.add(order_item)
+            db.session.commit()
+
+            order_id = order.id
+
+            return order_id
+
+    return _create_order
 

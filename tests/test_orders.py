@@ -557,11 +557,127 @@ def test_create_order_empty_items(
 
 
 
-#================== Test Create Order ==================
-#================== Test Create Order ==================
+#================== Test Get Order by ID ==================
+#================== Test Get Order bu ID ==================
 
 
 
 
 
+@pytest.mark.parametrize(
+    "role",
+    ["admin", "manager"]
+)
+def test_get_order_admin_manager(
+    app,
+    client,
+    get_access_token,
+    order,
+    role
+):
+    access_token = get_access_token(role=role)
+    order_id = order()
+    response = client.get(
+        f"/api/v1/orders/{order_id}",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
 
+    assert response.status_code == 200
+
+    data = response.json
+
+    assert data["id"] == order_id
+
+
+
+@pytest.mark.parametrize("role",["user", "staff"])
+def test_get_order_user_staff_own_order(
+    client,
+    get_access_token,
+    order,
+    role
+):
+    access_token = get_access_token(role=role)
+    order_id = order(user_role=role)  # Create an order for the user
+    response = client.get(
+        f"/api/v1/orders/{order_id}",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    assert response.json["id"] == order_id
+
+
+@pytest.mark.parametrize("role",["user", "staff"])
+def test_get_order_user_staff_other_users_order(
+    client,
+    get_access_token,
+    order,
+    role
+):
+    access_token = get_access_token(role=role)
+    order_id = order(user_role="admin")  # Create an order for another user
+    response = client.get(
+        f"/api/v1/orders/{order_id}",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 403
+
+    assert response.json["message"] == "Forbidden: You are not allowed to access this order"
+
+
+
+def test_get_order_not_found(
+    client,
+    get_access_token
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.get(
+        "/api/v1/orders/99999",
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 404
+
+    assert response.json["message"] == "Order not found"
+
+
+def test_get_order_no_token(
+    client,
+    order
+):
+    order_id = order()
+    response = client.get(
+        f"/api/v1/orders/{order_id}"
+    )
+
+    assert response.status_code == 401
+    print("RESPONSE JSON:", response.json)
+    assert response.json["msg"] == "Missing Authorization Header"
+
+
+def test_get_order_invalid_token(
+    client,
+    order
+):
+    order_id = order()
+
+    response = client.get(
+        f"/api/v1/orders/{order_id}",
+        headers={
+            "Authorization": "Bearer invalid-token"
+        }
+    )
+
+    assert response.status_code == 422

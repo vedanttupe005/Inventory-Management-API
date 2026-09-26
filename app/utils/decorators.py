@@ -1,5 +1,5 @@
 from functools import wraps
-
+from flask_smorest import abort
 from flask_jwt_extended import get_jwt
 
 
@@ -15,9 +15,7 @@ def role_required(*allowed_roles):
             user_role = claims.get("role")
 
             if user_role not in allowed_roles:
-                return {
-                    "error": "Forbidden you are not allowed to access this resource"
-                }, 403
+                abort(403, message="Forbidden: You do not have the required role to access this resource")
 
             return fn(*args, **kwargs)
 

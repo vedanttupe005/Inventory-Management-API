@@ -224,7 +224,7 @@ def update_order_status(data, order_id):
     order = db.session.get(Order, order_id)
 
     if not order:
-        return {"error": "Order not found"}, 404
+        abort(404, message="Order not found")
 
     order.status = data["status"]
 

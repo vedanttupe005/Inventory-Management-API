@@ -2,6 +2,7 @@
 #================== Test Create Order ==================
 import pytest
 from app.model import Product, Order, OrderItems, InventoryLog
+from app.extensions import db
 
 def test_create_order_success(
     app,
@@ -686,8 +687,14 @@ def test_get_order_invalid_token(
 
 
 
+
+
 #================== Test Get All Order ==================
 #================== Test Get All Order ==================
+
+
+
+
 
 
 
@@ -990,3 +997,245 @@ def test_get_orders_user_returns_only_own_order(
 
     assert data["total"] == 1
     assert data["items"][0]["id"] == user_order_id
+
+
+
+
+
+
+#================== Test Get All Order ==================
+#================== Test Get All Order ==================
+
+
+
+
+
+
+@pytest.mark.parametrize(
+    "role",
+    ["admin", "manager"]
+)
+def test_update_order_status_admin_manager(
+    client,
+    get_access_token,
+    order,
+    role
+):
+    access_token = get_access_token(role=role)
+
+    order_id = order(user_role="user")
+
+    response = client.patch(
+        f"/api/v1/orders/{order_id}/status",
+        json={
+            "status": "processing"
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    data = response.json
+
+    assert data["id"] == order_id
+    assert data["status"] == "processing"
+
+
+@pytest.mark.parametrize(
+    "role",
+    ["staff", "user"]
+)
+def test_update_order_status_user_staff_forbidden(
+    client,
+    get_access_token,
+    order,
+    role
+):
+    access_token = get_access_token(role=role)
+
+    order_id = order(user_role="user")
+
+    response = client.patch(
+        f"/api/v1/orders/{order_id}/status",
+        json={
+            "status": "completed"
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 403
+
+
+def test_update_order_status_no_token(
+    client,
+    order
+):
+    order_id = order(user_role="user")
+
+    response = client.patch(
+        f"/api/v1/orders/{order_id}/status",
+        json={
+            "status": "processing"
+        }
+    )
+
+    assert response.status_code == 401
+
+    assert response.json["msg"] == (
+        "Missing Authorization Header"
+    )
+
+
+def test_update_order_status_invalid_token(
+    client,
+    order
+):
+    order_id = order(user_role="user")
+
+    response = client.patch(
+        f"/api/v1/orders/{order_id}/status",
+        json={
+            "status": "processing"
+        },
+        headers={
+            "Authorization": "Bearer invalid-token"
+        }
+    )
+
+    assert response.status_code == 422
+
+
+def test_update_order_status_order_not_found(
+    client,
+    get_access_token
+):
+    access_token = get_access_token(role="admin")
+
+    response = client.patch(
+        "/api/v1/orders/99999/status",
+        json={
+            "status": "processing"
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 404
+
+    assert response.json["message"] == "Order not found"
+
+
+import pytest
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        "pending",
+        "processing",
+        "completed",
+        "cancelled"
+    ]
+)
+def test_update_order_status_valid_statuses(
+    client,
+    get_access_token,
+    order,
+    status
+):
+    order_id = order(user_role="user")
+
+    access_token = get_access_token(role="admin")
+
+    response = client.patch(
+        f"/api/v1/orders/{order_id}/status",
+        json={
+            "status": status
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    assert response.json["status"] == status
+
+
+def test_update_order_status_invalid_status(
+    client,
+    get_access_token,
+    order
+):
+    order_id = order(user_role="user")
+
+    access_token = get_access_token(role="admin")
+
+    response = client.patch(
+        f"/api/v1/orders/{order_id}/status",
+        json={
+            "status": "invalid_status"
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 422
+
+
+def test_update_order_status_missing_status(
+    client,
+    get_access_token,
+    order
+):
+    order_id = order(user_role="user")
+
+    access_token = get_access_token(role="admin")
+
+    response = client.patch(
+        f"/api/v1/orders/{order_id}/status",
+        json={},
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 422
+
+
+def test_update_order_status_saved_to_database(
+    app,
+    client,
+    get_access_token,
+    order
+):
+    order_id = order(user_role="user")
+
+    access_token = get_access_token(role="admin")
+
+    response = client.patch(
+        f"/api/v1/orders/{order_id}/status",
+        json={
+            "status": "completed"
+        },
+        headers={
+            "Authorization": f"Bearer {access_token}"
+        }
+    )
+
+    assert response.status_code == 200
+
+    with app.app_context():
+        updated_order = db.session.get(
+            Order,
+            order_id
+        )
+
+        assert updated_order is not None
+        assert updated_order.status == "completed"

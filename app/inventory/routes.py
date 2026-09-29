@@ -94,7 +94,7 @@ def get_inventory_logs():
     description="""
         Returns a paginated list of inventory logs for products whose current stock is below the specified threshold.
          Requires JWT authentication.
-         Roles allowed: Admin, Staff .""",
+         Roles allowed: Admin, manager .""",
     parameters=[
         {
             "in": "query",

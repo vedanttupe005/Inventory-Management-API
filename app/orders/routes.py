@@ -15,7 +15,12 @@ from app.utils.decorators import role_required
 @orders_bp.doc(
     summary="Create an order",
     description="""
-        Creates a new order, updates product inventory, and records inventory logs. Requires JWT authentication. Accessible by Admin, Manager, Staff, and User roles.""")
+        Creates a new order,
+        updates product inventory,
+        and records inventory logs. 
+        
+        Requires JWT authentication. 
+        Roles allowed: Admin, User, Staff, Manager.""")
 @orders_bp.arguments(OrderCreateSchema)
 @orders_bp.response(201, OrderResponseSchema)
 @jwt_required()
@@ -109,7 +114,11 @@ def create_order(data):
 @orders_bp.doc(
     summary="Get order by ID",
     description="""
-        Returns the order associated with the specified ID. Admins and Managers can view any order, while Staff and Users can only view their own orders.""")
+        Returns the order associated with the specified ID. 
+        
+        Requires JWT authentication. Roles allowed: Admin, Manager, Staff, User.
+        Admins and Managers can view any order, 
+        while Staff and Users can only view their own orders.""")
 @orders_bp.response(200, OrderResponseSchema)
 @jwt_required()
 @role_required("admin", "manager", "staff", "user")
@@ -138,7 +147,11 @@ def get_order(order_id):
 @orders_bp.doc(
     summary="Get all orders",
     description="""
-        Returns a paginated list of orders. Admins and Managers can view all orders, while Staff and Users can only view their own orders.""",
+        Returns a paginated list of orders. 
+        
+        Requires JWT authentication. Roles allowed: Admin, Manager, Staff, User.
+        Admins and Managers can view all orders, 
+        while Staff and Users can only view their own orders.""",
     parameters=[
         {
             "in": "query",
@@ -209,7 +222,7 @@ def get_orders():
     summary="Update order status",
     description="""
         Updates the status of an existing order.
-        Requires JWT authentication. Accessible by Admin and Manager roles.
+        Requires JWT authentication. Role allowed : admin, manager.
 "pending",
 "processing",
 "completed",
@@ -239,7 +252,12 @@ def update_order_status(data, order_id):
 @orders_bp.route("/<int:order_id>/cancel", methods=["PATCH"])
 @orders_bp.doc(
     summary="Cancel an order",
-    description="""Cancels a pending order, restores product inventory, and records inventory logs. Requires JWT authentication. Accessible by Admin and Manager roles.""")
+    description="""Cancels a pending order,
+                
+                restores product inventory, and records inventory logs. 
+                
+                Requires JWT authentication. 
+                Roles allowed: Admin, Manager.""")
 @orders_bp.response(200, OrderResponseSchema)
 @jwt_required()
 @role_required("admin", "manager")

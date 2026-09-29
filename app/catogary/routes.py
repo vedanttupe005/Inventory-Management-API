@@ -15,7 +15,9 @@ from app.utils.decorators import role_required
 @category_bp.doc(
     summary="Get all categories",
     description="""
-        Returns all available product categories. Requires JWT authentication.""")
+        Returns all available product categories.
+        Requires JWT authentication.       
+        Roles allowed: Admin, Manager, Staff, User.""")
 @jwt_required()
 @role_required("admin", "user",'staff', "manager")
 @cache.cached(key_prefix="categories_list", timeout=300)
@@ -32,14 +34,8 @@ def get_catogaries():
     summary="Get category by ID",
     description="""
     Returns a single category by its ID.
-
     Requires JWT authentication.
-
-    Accessible by:
-    - Admin
-    - Manager
-    - Staff
-    - User
+    Roles allowed: Admin, Manager, Staff, User.
     """)
 @category_bp.response(200, CategorySchema)
 @jwt_required()
@@ -62,7 +58,9 @@ def get_category(category_id):
 @category_bp.doc(
     summary="Create a category",
     description="""
-        Creates a new product category. Requires JWT authentication. Accessible by Admin and Manager roles.""")
+        Creates a new product category.
+        Requires JWT authentication.
+        Role allowed :admin , manager.""")
 @category_bp.arguments(CategoryCreateSchema)
 @category_bp.response(201, CategorySchema)
 @jwt_required()
@@ -98,7 +96,9 @@ def create_category(data):
 @category_bp.doc(
     summary="Update a category",
     description="""
-    Updates the name of an existing category. Requires JWT authentication. Accessible by Admin and Manager roles.""")
+    Updates the name of an existing category.
+    Requires JWT authentication.
+    Role allowed: Admin, Manager.""")
 @category_bp.arguments(CategoryCreateSchema)
 @category_bp.response(200, CategorySchema)
 @jwt_required()
@@ -124,7 +124,9 @@ def update_category(data, category_id):
 @category_bp.route("/<int:category_id>", methods=["DELETE"])
 @category_bp.doc(
     summary="Delete a category",
-    description="Deletes a category if it has no associated products. Requires JWT authentication. Accessible by Admin role only."
+    description="Deletes a category if it has no associated products."
+                "Requires JWT authentication."
+                "Roles allowed : admin."
 )
 @jwt_required()
 @role_required("admin")

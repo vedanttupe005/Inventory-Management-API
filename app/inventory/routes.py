@@ -11,7 +11,10 @@ from app.schema.inventory_log_schema import  InventoryLogResponseSchema, Invento
 @inventory_bp.doc(
     summary="Get inventory logs",
     description="""
-        Returns a paginated list of inventory logs. Optionally filter logs by product ID. Requires JWT authentication.""",
+        Returns a paginated list of inventory logs.
+        Optionally filter logs by product ID.
+        Requires JWT authentication.
+        Roles allowed: Admin, Manager.""",
     parameters=[
         {
             "in": "query",
@@ -41,7 +44,7 @@ from app.schema.inventory_log_schema import  InventoryLogResponseSchema, Invento
 )
 @inventory_bp.response(200, InventoryLogPaginationSchema)
 @jwt_required()
-@role_required("admin", "staff", "manager", "user")
+@role_required("admin", "manager")
 def get_inventory_logs():
 
     product_id = request.args.get("product_id", type=int)
@@ -89,7 +92,9 @@ def get_inventory_logs():
 @inventory_bp.doc(
     summary="Get low stock inventory logs",
     description="""
-        Returns a paginated list of inventory logs for products whose current stock is below the specified threshold. Requires JWT authentication.""",
+        Returns a paginated list of inventory logs for products whose current stock is below the specified threshold.
+         Requires JWT authentication.
+         Roles allowed: Admin, Staff .""",
     parameters=[
         {
             "in": "query",
@@ -122,7 +127,7 @@ def get_inventory_logs():
 )
 @inventory_bp.response(200, InventoryLogPaginationSchema)
 @jwt_required()
-@role_required("admin", "staff", "manager", "user")
+@role_required("admin", "manager")
 @cache.cached(timeout=300, query_string=True)
 def get_low_stock_logs():
 

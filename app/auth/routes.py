@@ -17,7 +17,9 @@ from flask_jwt_extended import create_access_token, create_refresh_token, jwt_re
 @auth_bp.doc(
     summary="Register a new user",
     description="""
-        Creates a new user account with a hashed password. This endpoint is publicly accessible and is rate limited to 5 requests per minute.""")
+        Creates a new user account with a hashed password. 
+        This endpoint is publicly accessible, and 
+        rate limited to 5 requests per minute.""")
 @auth_bp.arguments(RegisterSchema)
 @auth_bp.response(201, UserResponseSchema)
 @limiter.limit("5 per minute")
@@ -48,7 +50,10 @@ def register(data):
 @auth_bp.doc(
     summary="Login user",
     description="""
-    Authenticates a user using their email and password. Returns JWT access and refresh tokens. This endpoint is publicly accessible and rate limited to 5 requests per minute.""")
+    Authenticates a user using their email and password.
+    Returns JWT access and refresh tokens. 
+    This endpoint is publicly accessible and, 
+    rate limited to 5 requests per minute.""")
 @auth_bp.arguments(LoginSchema)
 @auth_bp.response(200, LoginResponseSchema)
 @limiter.limit("5 per minute")
@@ -86,7 +91,8 @@ def login(data):
 @auth_bp.doc(
     summary="Logout user",
     description="""
-    Logs out the authenticated user by adding the current JWT to the token blocklist. Requires JWT authentication.""")
+    Logs out the authenticated user by adding the current JWT to the token blocklist. 
+    Requires JWT authentication.""")
 @auth_bp.response(200, User_Logout_MessageSchema)
 @jwt_required()
 def logout():
@@ -108,7 +114,9 @@ def logout():
 @auth_bp.doc(
     summary="Refresh access token",
     description="""
-    Generates a new JWT access token using a valid refresh token. Requires JWT refresh authentication and is rate limited to 20 requests per minute.""")
+    Generates a new JWT access token using a valid refresh token.
+    Requires JWT refresh authentication and,
+    rate limited to 20 requests per minute.""")
 @auth_bp.response(200, RefreshResponseSchema)
 @jwt_required(refresh=True)
 @limiter.limit("20 per minute")

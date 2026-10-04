@@ -15,7 +15,10 @@ from marshmallow import ValidationError
 @products_bp.doc(
     summary="Get all products",
     description="""
-    Returns a paginated list of products. Supports searching, filtering, sorting, and pagination. Requires JWT authentication.""",
+    Returns a paginated list of products.
+    Supports searching, filtering, sorting, and pagination.
+    Requires JWT authentication.
+    Roles allowed: Admin, User, Staff, Manager.""",
     parameters=[
         {
             "in": "query",
@@ -184,7 +187,9 @@ def get_products():
 @products_bp.doc(
     summary="Get product by ID",
     description="""
-        Returns the product associated with the specified ID. Requires JWT authentication.""")
+        Returns the product associated with the specified ID. 
+        Requires JWT authentication.
+        Roles allowed: Admin, User, Staff, Manager.""",)
 @products_bp.response(200, ProductResponseSchema)
 @jwt_required()
 @role_required("admin", "user", "staff", "manager")
@@ -208,7 +213,9 @@ def get_product(product_id):
 @products_bp.doc(
     summary="Create a product",
     description="""
-        Creates a new product and records the initial inventory log. Requires JWT authentication. Accessible by Admin and Manager roles.""")
+        Creates a new product and records the initial inventory log. 
+        Requires JWT authentication.
+        Roles allowed: Admin and Manager.""")
 @products_bp.arguments(ProductCreateSchema)
 @products_bp.response(201, ProductResponseSchema)
 @jwt_required()
@@ -261,7 +268,10 @@ def create_product(data):
 @products_bp.doc(
     summary="Update a product",
     description="""
-        Updates one or more product fields. Stock quantity changes are recorded in the inventory log. Requires JWT authentication. Accessible by Admin and Manager roles.""")
+        Updates one or more product fields. 
+        Stock quantity changes are recorded in the inventory log. 
+        Requires JWT authentication.
+        Roles allowed: Admin and Manager.""")
 @products_bp.arguments(ProductUpdateSchema)
 @products_bp.response(200, ProductResponseSchema)
 @jwt_required()
@@ -307,7 +317,9 @@ def update_product(data, product_id):
 @products_bp.route("/<int:product_id>", methods=["DELETE"])
 @products_bp.doc(
     summary="Delete a product",
-    description="Deletes the specified product. Requires JWT authentication. Accessible by Admin and Manager roles.",
+    description="Deletes the specified product. "
+                "Requires JWT authentication. "
+                "Accessible by Admin and Manager roles.",
     parameters=[
         {
             "in": "path",

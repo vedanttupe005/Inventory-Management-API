@@ -10,8 +10,8 @@ class Config:
 
     #caching and redis configuration
     CACHE_TYPE = "RedisCache"
-    CACHE_REDIS_HOST = "localhost"
-    CACHE_REDIS_PORT = 6379
+    CACHE_REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+    CACHE_REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
     CACHE_REDIS_DB = 0
     CACHE_DEFAULT_TIMEOUT = 300
 

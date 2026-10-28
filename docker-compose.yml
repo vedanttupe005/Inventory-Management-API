@@ -1,0 +1,33 @@
+services:
+
+  api:
+    build: .
+    container_name: inventory-api
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:16
+    container_name: inventory-db
+    environment:
+      POSTGRES_DB: inventory
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: inventory-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
